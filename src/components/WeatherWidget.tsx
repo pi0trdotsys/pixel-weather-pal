@@ -73,6 +73,20 @@ export function WeatherWidget({
       <div className="mb-3 flex items-center justify-between gap-2 text-[11px] uppercase tracking-widest text-[color:var(--phosphor-dim)]">
         <span className="truncate">┌─ widget 4×2 · {location || "unknown"} ─┐</span>
         <div className="flex items-center gap-2">
+          <span
+            title={online ? "network: online" : "network: offline — cache mode"}
+            className={
+              "inline-flex items-center gap-1 border px-1 py-0.5 text-[10px] " +
+              (online
+                ? "border-[color:var(--phosphor-dim)] text-[color:var(--phosphor)]"
+                : "border-[color:var(--crimson)] text-[color:var(--crimson)] animate-pulse")
+            }
+          >
+            {online ? <Wifi size={10} /> : <WifiOff size={10} />}
+            <span className="hidden sm:inline">
+              {online ? "online" : "offline"}
+            </span>
+          </span>
           <label className="hidden sm:inline">refresh:</label>
           <select
             value={interval}
@@ -91,11 +105,12 @@ export function WeatherWidget({
           <button
             type="button"
             onClick={onRefresh}
-            disabled={isRefreshing}
-            title="refresh now"
+            disabled={isRefreshing || !online}
+            title={online ? "refresh now" : "offline — cannot refresh"}
             aria-label="refresh now"
             className="grid h-6 w-6 place-items-center border border-[color:var(--phosphor-dim)] text-[color:var(--phosphor)] transition hover:border-[color:var(--phosphor)] hover:bg-[color:var(--phosphor)]/10 disabled:opacity-50"
           >
+
             <RefreshCw
               size={12}
               className={isRefreshing ? "animate-spin" : ""}
