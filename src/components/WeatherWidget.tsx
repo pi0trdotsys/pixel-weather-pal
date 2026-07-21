@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { PixelIcon } from "./PixelIcon";
 import type { WeatherResponse } from "@/lib/weather-api";
 import { wmoToKind, wmoLabel } from "@/lib/wmo";
@@ -17,6 +17,9 @@ export function WeatherWidget({
   updatedAt,
   interval,
   onIntervalChange,
+  online = true,
+  isStale = false,
+  fromCache = false,
 }: {
   data: WeatherResponse;
   location: string;
@@ -25,7 +28,11 @@ export function WeatherWidget({
   updatedAt?: number;
   interval: RefreshInterval;
   onIntervalChange: (v: RefreshInterval) => void;
+  online?: boolean;
+  isStale?: boolean;
+  fromCache?: boolean;
 }) {
+
   const c = data.current;
   const kind = wmoToKind(c.weather_code);
   const isNight = c.is_day === 0;
