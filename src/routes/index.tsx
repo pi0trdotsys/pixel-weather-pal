@@ -10,6 +10,13 @@ import { TerminalOutput } from "@/components/TerminalOutput";
 import { LocationBar } from "@/components/LocationBar";
 import { JokeTicker } from "@/components/JokeTicker";
 import { fetchWeather, reverseGeocode, type GeoResult } from "@/lib/weather-api";
+import {
+  loadWeatherCache,
+  loadLastWeatherCache,
+  saveWeatherCache,
+} from "@/lib/weather-cache";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+
 
 type Coords = { lat: number; lon: number; name: string } | null;
 const INTERVAL_KEY = "brew-wx:interval";
@@ -105,17 +112,64 @@ function Index() {
     } catch {}
   }, [interval]);
 
+  const online = useOnlineStatus();
+
   const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } =
     useQuery({
       enabled: !!coords,
       queryKey: ["weather", coords?.lat, coords?.lon],
-      queryFn: () => fetchWeather(coords!.lat, coords!.lon),
+      queryFn: async () => {
+        if (!navigator.onLine) {
+          const cached = loadWeatherCache(coords!.lat, coords!.lon);
+          if (cached) return cached.data;
+          throw new Error("offline & no cached snapshot available");
+        }
+        try {
+          const fresh = await fetchWeather(coords!.lat, coords!.lon);
+          saveWeatherCache({
+            data: fresh,
+            updatedAt: Date.now(),
+            location: coords!.name,
+            lat: coords!.lat,
+            lon: coords!.lon,
+          });
+          return fresh;
+        } catch (e) {
+          const cached = loadWeatherCache(coords!.lat, coords!.lon);
+          if (cached) return cached.data;
+          throw e;
+        }
+      },
+      initialData: () => {
+        if (!coords) return undefined;
+        return (
+          loadWeatherCache(coords.lat, coords.lon)?.data ??
+          loadLastWeatherCache()?.data
+        );
+      },
+      initialDataUpdatedAt: () => {
+        if (!coords) return undefined;
+        return (
+          loadWeatherCache(coords.lat, coords.lon)?.updatedAt ??
+          loadLastWeatherCache()?.updatedAt
+        );
+      },
       staleTime: interval * 60 * 1000,
-      refetchInterval: interval * 60 * 1000,
+      refetchInterval: online ? interval * 60 * 1000 : false,
       refetchIntervalInBackground: true,
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: online,
       refetchOnReconnect: true,
+      retry: online ? 2 : 0,
     });
+
+  useEffect(() => {
+    if (online && coords) refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
+
+  const isStale =
+    !!dataUpdatedAt && Date.now() - dataUpdatedAt > interval * 60 * 1000;
+  const fromCache = !online && !!data;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 px-4 pb-4 pt-6 sm:px-6">
@@ -171,7 +225,7 @@ function Index() {
         </div>
       )}
 
-      {error && (
+      {error && !data && (
         <div className="terminal-box p-4 text-sm text-[color:var(--crimson)]">
           fetch failed: {(error as Error).message}
         </div>
@@ -187,11 +241,28 @@ function Index() {
             updatedAt={dataUpdatedAt}
             interval={interval}
             onIntervalChange={setInterval}
+            online={online}
+            isStale={isStale}
+            fromCache={fromCache}
           />
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
             <NowPanel data={data} />
             <div className="terminal-box p-4 text-xs text-[color:var(--phosphor-dim)]">
               <div className="mb-2 uppercase tracking-widest">$ cron -l</div>
+              <p>
+                * net:{" "}
+                <span
+                  className={
+                    online
+                      ? "text-[color:var(--phosphor)]"
+                      : "text-[color:var(--crimson)]"
+                  }
+                >
+                  {online ? "ONLINE" : "OFFLINE"}
+                </span>
+                {fromCache && " · serving cache"}
+                {isStale && online && " · stale, refreshing"}
+              </p>
               <p>* auto-refresh co {interval} min (also in background)</p>
               <p>* last sync: {new Date(dataUpdatedAt).toLocaleTimeString()}</p>
               <p>* provider: open-meteo · lokacja: {coords.name}</p>
