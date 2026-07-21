@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
-import { WeatherWidget } from "@/components/WeatherWidget";
+import { WeatherWidget, type RefreshInterval } from "@/components/WeatherWidget";
 import { NowPanel } from "@/components/NowPanel";
 import { HourlyStrip } from "@/components/HourlyStrip";
 import { DailyForecast } from "@/components/DailyForecast";
@@ -12,6 +12,7 @@ import { JokeTicker } from "@/components/JokeTicker";
 import { fetchWeather, reverseGeocode, type GeoResult } from "@/lib/weather-api";
 
 type Coords = { lat: number; lon: number; name: string } | null;
+const INTERVAL_KEY = "brew-wx:interval";
 
 const STORAGE_KEY = "brew-wx:coords";
 
@@ -91,13 +92,30 @@ function Index() {
     if (booted && !coords) locate();
   }, [booted, coords, locate]);
 
-  const { data, isLoading, error } = useQuery({
-    enabled: !!coords,
-    queryKey: ["weather", coords?.lat, coords?.lon],
-    queryFn: () => fetchWeather(coords!.lat, coords!.lon),
-    staleTime: 10 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+  const [interval, setInterval] = useState<RefreshInterval>(30);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(INTERVAL_KEY);
+      if (raw) setInterval(Number(raw) as RefreshInterval);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(INTERVAL_KEY, String(interval));
+    } catch {}
+  }, [interval]);
+
+  const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } =
+    useQuery({
+      enabled: !!coords,
+      queryKey: ["weather", coords?.lat, coords?.lon],
+      queryFn: () => fetchWeather(coords!.lat, coords!.lon),
+      staleTime: interval * 60 * 1000,
+      refetchInterval: interval * 60 * 1000,
+      refetchIntervalInBackground: true,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    });
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 px-4 pb-4 pt-6 sm:px-6">
@@ -161,9 +179,23 @@ function Index() {
 
       {data && coords && (
         <>
+          <WeatherWidget
+            data={data}
+            location={coords.name}
+            onRefresh={() => refetch()}
+            isRefreshing={isFetching}
+            updatedAt={dataUpdatedAt}
+            interval={interval}
+            onIntervalChange={setInterval}
+          />
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            <WeatherWidget data={data} location={coords.name} />
             <NowPanel data={data} />
+            <div className="terminal-box p-4 text-xs text-[color:var(--phosphor-dim)]">
+              <div className="mb-2 uppercase tracking-widest">$ cron -l</div>
+              <p>* auto-refresh co {interval} min (also in background)</p>
+              <p>* last sync: {new Date(dataUpdatedAt).toLocaleTimeString()}</p>
+              <p>* provider: open-meteo · lokacja: {coords.name}</p>
+            </div>
           </div>
           <HourlyStrip data={data} />
           <div className="grid gap-4 lg:grid-cols-2">
