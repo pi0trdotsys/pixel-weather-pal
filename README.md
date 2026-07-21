@@ -1,80 +1,60 @@
 <div align="center">
 
-# 🟢 homebrew-weather
+# homebrew-weather
 
-**`$ weather --today`**
+<sub>pixel-art weather, terminal-native</sub>
 
-A pixel-art weather terminal for developers. Green phosphor, CRT scanlines, and a forecast that ships with dev jokes instead of ads.
+<br/>
 
 [![beta](https://img.shields.io/badge/status-beta-33ff66?style=flat-square&labelColor=0a0f0a)](https://github.com/pi0trdotsys/pixel-weather-pal/releases)
-[![stack](https://img.shields.io/badge/stack-TanStack%20Start%20%7C%20React%2019%20%7C%20Tailwind%20v4-0a0f0a?style=flat-square&labelColor=000000&color=33ff66)](#stack)
-[![data](https://img.shields.io/badge/data-Open--Meteo-ffb000?style=flat-square&labelColor=0a0f0a)](https://open-meteo.com/)
+[![stack](https://img.shields.io/badge/TanStack%20Start-%C2%B7-0a0f0a?style=flat-square&labelColor=000000&color=33ff66)](#stack)
+[![data](https://img.shields.io/badge/Open--Meteo-%C2%B7-0a0f0a?style=flat-square&labelColor=0a0f0a&color=ffb000)](https://open-meteo.com/)
+[![android](https://img.shields.io/badge/Android-native%20widget-0a0f0a?style=flat-square&labelColor=0a0f0a&color=33ff66)](#android-beta)
 
 </div>
 
----
+<br/>
 
-## `man homebrew-weather`
+<p align="center">
+  <img src="docs/screenshot-app.svg" width="100%" alt="homebrew-weather dashboard" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-widget.svg" width="60%" alt="native Android 4×2 home-screen widget" />
+</p>
+
+<br/>
 
 ```
-NAME
-    homebrew-weather — pixel-art weather forecast for developers
-
-SYNOPSIS
-    A tiny weather app styled like a 1980s phosphor CRT terminal.
-    16×16 hand-drawn pixel icons, dev jokes matched to conditions,
-    typewriter ASCII forecast, and a widget-shaped home tile.
-
-DATA
-    Weather + geocoding via open-meteo.com — free, no key, no tracking.
-    Location comes straight from your device; nothing else leaves it.
-
-BUGS
-    // TODO: teach it to make coffee
+NAME     homebrew-weather — pixel-art weather forecast for developers
+DATA     open-meteo.com — no key, no tracking, no backend
+PLATFORM web (PWA) + native Android widget
 ```
 
 ## Features
 
-- **`$ weather --today`** — a real terminal panel with typewriter-animated forecast output
-- **Now / Hourly / 7-day** — feels-like, wind, humidity, pressure as "system stats"; 24h scroll strip; 7-day forecast rendered as a terminal table
-- **Native Android home-screen widget** — a real 4×2 App Widget (not a WebView), rendering the same pixel icons/forecast the app does, with its own refresh button and city picker, entirely independent of the app being open
-- **Weather notifications** — rain incoming, high/low temperature, and big day-to-day swings, evaluated natively in the background and configurable per-threshold
-- **`./settings`** — refresh interval + all notification toggles/thresholds, shared between the app and the widget's background worker
-- **Zero backend** — everything runs client-side (and, on Android, natively) against [Open-Meteo](https://open-meteo.com/); no API keys, no server, no tracking
-- **Installable** — PWA manifest for "Add to Home Screen", plus a native Android beta build (see [Releases](https://github.com/pi0trdotsys/pixel-weather-pal/releases))
+- Pixel-art icons, CRT phosphor glow, typewriter forecast output
+- Native Android home-screen widget (4×2) — refresh, city picker, own background worker
+- Rain / high / low / swing notifications, thresholds set in `./settings`
+- Zero backend — talks to [Open-Meteo](https://open-meteo.com/) directly, on-device
 
 ## Stack
 
-| Layer      | Tech                                             |
-| ---------- | ------------------------------------------------ |
-| Framework  | [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) |
-| UI         | React 19, Tailwind CSS v4, Radix primitives      |
-| Data       | [Open-Meteo](https://open-meteo.com/) (weather + geocoding), TanStack Query |
-| Mobile     | [Capacitor](https://capacitorjs.com/) + native Kotlin (AppWidgetProvider, WorkManager, notifications) |
-| Settings   | [@capacitor/preferences](https://capacitorjs.com/docs/apis/preferences) — shared storage between the web app and native widget/worker |
-| Tooling    | Vite, Bun, ESLint, Prettier                      |
+`TanStack Start` `React 19` `Tailwind v4` `Capacitor` `Kotlin` — see [Android](#android-beta) for the native half.
 
-## Getting started
+## Run
 
 ```bash
 bun install
-bun run dev      # http://localhost:3000
-```
-
-```bash
-bun run build    # production build
-bun run lint     # eslint
-bun run format   # prettier --write .
+bun run dev
 ```
 
 ## Android (beta)
 
-A debug-signed beta `.apk` wraps the static client build (Capacitor WebView) alongside a genuinely native home-screen widget and background worker written in Kotlin — the widget keeps working, refreshing, and notifying even if the app itself is never opened. Grab the latest build from [Releases](https://github.com/pi0trdotsys/pixel-weather-pal/releases).
-
 ```bash
-bun run build:capacitor   # static web build → capacitor-www/
+bun run build:capacitor
 npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
-Add the widget from your launcher's widget picker ("Homebrew Weather", 4×2) — it'll prompt you to pick a city (or use your location), then updates itself on the interval set in `./settings`.
+Add the widget from your launcher's picker — pick a city, it runs on its own from there. Latest build: [Releases](https://github.com/pi0trdotsys/pixel-weather-pal/releases).
