@@ -16,6 +16,9 @@ dist-ssr
 .nitro
 *.local
 
+# Capacitor Android static build output
+capacitor-www/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
