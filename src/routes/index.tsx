@@ -241,11 +241,28 @@ function Index() {
             updatedAt={dataUpdatedAt}
             interval={interval}
             onIntervalChange={setInterval}
+            online={online}
+            isStale={isStale}
+            fromCache={fromCache}
           />
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
             <NowPanel data={data} />
             <div className="terminal-box p-4 text-xs text-[color:var(--phosphor-dim)]">
               <div className="mb-2 uppercase tracking-widest">$ cron -l</div>
+              <p>
+                * net:{" "}
+                <span
+                  className={
+                    online
+                      ? "text-[color:var(--phosphor)]"
+                      : "text-[color:var(--crimson)]"
+                  }
+                >
+                  {online ? "ONLINE" : "OFFLINE"}
+                </span>
+                {fromCache && " · serving cache"}
+                {isStale && online && " · stale, refreshing"}
+              </p>
               <p>* auto-refresh co {interval} min (also in background)</p>
               <p>* last sync: {new Date(dataUpdatedAt).toLocaleTimeString()}</p>
               <p>* provider: open-meteo · lokacja: {coords.name}</p>
