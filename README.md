@@ -20,7 +20,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot-widget.svg" width="60%" alt="native Android 4×2 home-screen widget" />
+  <img src="docs/screenshot-widget.svg" width="55%" alt="native Android 4×2 home-screen widget" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-settings.svg" width="49.5%" alt="settings — notification thresholds" /><img src="docs/screenshot-about.svg" width="49.5%" alt="about — man page style" />
 </p>
 
 <br/>
