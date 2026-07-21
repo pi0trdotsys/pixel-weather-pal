@@ -10,6 +10,13 @@ import { TerminalOutput } from "@/components/TerminalOutput";
 import { LocationBar } from "@/components/LocationBar";
 import { JokeTicker } from "@/components/JokeTicker";
 import { fetchWeather, reverseGeocode, type GeoResult } from "@/lib/weather-api";
+import {
+  loadWeatherCache,
+  loadLastWeatherCache,
+  saveWeatherCache,
+} from "@/lib/weather-cache";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+
 
 type Coords = { lat: number; lon: number; name: string } | null;
 const INTERVAL_KEY = "brew-wx:interval";
