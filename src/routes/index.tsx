@@ -225,7 +225,7 @@ function Index() {
         </div>
       )}
 
-      {error && (
+      {error && !data && (
         <div className="terminal-box p-4 text-sm text-[color:var(--crimson)]">
           fetch failed: {(error as Error).message}
         </div>
