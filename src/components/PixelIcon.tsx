@@ -174,7 +174,8 @@ export function PixelIcon({
   const px = Math.floor(size / 16);
   return (
     <div
-      className={className}
+      key={kind}
+      className={`pixel-materialize ${className}`}
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(16, ${px}px)`,
@@ -193,7 +194,7 @@ export function PixelIcon({
             style={{
               width: px,
               height: px,
-              background: ch === "." ? "transparent" : COLORS[ch] ?? "#33ff66",
+              background: ch === "." ? "transparent" : (COLORS[ch] ?? "#33ff66"),
             }}
           />
         )),

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:text="$ configure widget --city"
+            android:textColor="#4a6a4a"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="monospace"
+            android:text="homebrew weather // widget setup"
+            android:textColor="#33ff66"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/suggestion_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:background="#0a0f0a"
+            android:fontFamily="monospace"
+            android:padding="12dp"
+            android:textColor="#33ff66"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/city_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#0a0f0a"
+            android:fontFamily="monospace"
+            android:hint="search city..."
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:padding="12dp"
+            android:singleLine="true"
+            android:textColor="#33ff66"
+            android:textColorHint="#4a6a4a"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/search_btn"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="#123312"
+                android:fontFamily="monospace"
+                android:text="[ search ]"
+                android:textColor="#33ff66" />
+
+            <Button
+                android:id="@+id/locate_btn"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:backgroundTint="#123312"
+                android:fontFamily="monospace"
+                android:text="[ use my location ]"
+                android:textColor="#33ff66" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="monospace"
+            android:textColor="#4a6a4a"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/results_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+
+    </LinearLayout>
+</ScrollView>

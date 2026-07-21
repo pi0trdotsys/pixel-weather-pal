@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
     namespace = "dev.pi0trdotsys.homebrewweather"
@@ -7,8 +8,8 @@ android {
         applicationId "dev.pi0trdotsys.homebrewweather"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "0.2.0-beta.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -21,6 +22,16 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+    compileOptions {
+        // Kept in sync with the sourceCompatibility Capacitor generates into
+        // capacitor.build.gradle (applied below, and which wins last) so
+        // Kotlin and Java agree on the same JVM bytecode target.
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions {
+        jvmTarget = "21"
     }
 }
 
@@ -40,6 +51,11 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Native home-screen widget (Kotlin) support.
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
+    implementation "androidx.work:work-runtime-ktx:2.9.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
 }
 
 apply from: 'capacitor.build.gradle'

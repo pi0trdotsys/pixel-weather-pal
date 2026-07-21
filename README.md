@@ -35,10 +35,12 @@ BUGS
 
 ## Features
 
-- **Dashboard widget** — a big iOS/Android-style tile: pixel icon, huge VT323 temperature, city, one random dev joke matched to the current condition
 - **`$ weather --today`** — a real terminal panel with typewriter-animated forecast output
 - **Now / Hourly / 7-day** — feels-like, wind, humidity, pressure as "system stats"; 24h scroll strip; 7-day forecast rendered as a terminal table
-- **Zero backend** — everything runs client-side against [Open-Meteo](https://open-meteo.com/); no API keys, no server, no tracking
+- **Native Android home-screen widget** — a real 4×2 App Widget (not a WebView), rendering the same pixel icons/forecast the app does, with its own refresh button and city picker, entirely independent of the app being open
+- **Weather notifications** — rain incoming, high/low temperature, and big day-to-day swings, evaluated natively in the background and configurable per-threshold
+- **`./settings`** — refresh interval + all notification toggles/thresholds, shared between the app and the widget's background worker
+- **Zero backend** — everything runs client-side (and, on Android, natively) against [Open-Meteo](https://open-meteo.com/); no API keys, no server, no tracking
 - **Installable** — PWA manifest for "Add to Home Screen", plus a native Android beta build (see [Releases](https://github.com/pi0trdotsys/pixel-weather-pal/releases))
 
 ## Stack
@@ -48,7 +50,8 @@ BUGS
 | Framework  | [TanStack Start](https://tanstack.com/start) + [TanStack Router](https://tanstack.com/router) |
 | UI         | React 19, Tailwind CSS v4, Radix primitives      |
 | Data       | [Open-Meteo](https://open-meteo.com/) (weather + geocoding), TanStack Query |
-| Mobile     | [Capacitor](https://capacitorjs.com/) (Android)  |
+| Mobile     | [Capacitor](https://capacitorjs.com/) + native Kotlin (AppWidgetProvider, WorkManager, notifications) |
+| Settings   | [@capacitor/preferences](https://capacitorjs.com/docs/apis/preferences) — shared storage between the web app and native widget/worker |
 | Tooling    | Vite, Bun, ESLint, Prettier                      |
 
 ## Getting started
@@ -66,10 +69,12 @@ bun run format   # prettier --write .
 
 ## Android (beta)
 
-A debug-signed beta `.apk` is wrapped with Capacitor from a static client build (the app needs no server — everything is fetched from Open-Meteo directly on-device). Grab the latest build from [Releases](https://github.com/pi0trdotsys/pixel-weather-pal/releases).
+A debug-signed beta `.apk` wraps the static client build (Capacitor WebView) alongside a genuinely native home-screen widget and background worker written in Kotlin — the widget keeps working, refreshing, and notifying even if the app itself is never opened. Grab the latest build from [Releases](https://github.com/pi0trdotsys/pixel-weather-pal/releases).
 
 ```bash
 bun run build:capacitor   # static web build → capacitor-www/
 npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
+
+Add the widget from your launcher's widget picker ("Homebrew Weather", 4×2) — it'll prompt you to pick a city (or use your location), then updates itself on the interval set in `./settings`.

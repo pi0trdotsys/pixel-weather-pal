@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background">
+
+    <LinearLayout
+        android:id="@+id/widget_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="6dp">
+
+        <!-- header row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_header_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="┌─ widget 4×2 ─┐"
+                android:textColor="@color/widget_green_dim"
+                android:textSize="9sp" />
+
+            <!-- Blinking terminal cursor, toggled VISIBLE/GONE roughly once a
+                 minute by BlinkAlarm/WeatherWidgetProvider — see BlinkAlarm.kt
+                 for why a widget can't do a real smooth blink. -->
+            <TextView
+                android:id="@+id/widget_cursor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:fontFamily="monospace"
+                android:text="_"
+                android:textColor="@color/widget_green"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/widget_online_dot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/widget_dot_online" />
+
+            <ImageButton
+                android:id="@+id/widget_city_btn"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:background="@android:color/transparent"
+                android:padding="3dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_widget_city" />
+
+            <ImageButton
+                android:id="@+id/widget_refresh_btn"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:background="@android:color/transparent"
+                android:padding="3dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_widget_refresh" />
+        </LinearLayout>
+
+        <!-- 4-day body grid -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_day0_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
+
+                <ImageView
+                    android:id="@+id/widget_icon0"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
+
+                <TextView
+                    android:id="@+id/widget_temp0"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/widget_pop0"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_day1_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
+
+                <ImageView
+                    android:id="@+id/widget_icon1"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
+
+                <TextView
+                    android:id="@+id/widget_temp1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/widget_pop1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_day2_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
+
+                <ImageView
+                    android:id="@+id/widget_icon2"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
+
+                <TextView
+                    android:id="@+id/widget_temp2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/widget_pop2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_day3_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
+
+                <ImageView
+                    android:id="@+id/widget_icon3"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
+
+                <TextView
+                    android:id="@+id/widget_temp3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/widget_pop3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- footer -->
+        <TextView
+            android:id="@+id/widget_footer_comment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="// sigma.forecast()"
+            android:textColor="@color/widget_green_dim"
+            android:textSize="8sp" />
+
+        <TextView
+            android:id="@+id/widget_footer_joke"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/widget_amber"
+            android:textSize="9sp" />
+    </LinearLayout>
+</FrameLayout>
