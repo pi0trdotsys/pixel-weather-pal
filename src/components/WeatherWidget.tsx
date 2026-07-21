@@ -146,6 +146,24 @@ export function WeatherWidget({
         ))}
       </div>
 
+      {/* offline / stale banner */}
+      {(!online || isStale || fromCache) && (
+        <div
+          className={
+            "mt-3 border px-2 py-1 text-[10px] uppercase tracking-widest " +
+            (!online
+              ? "border-[color:var(--crimson)] text-[color:var(--crimson)]"
+              : "border-[color:var(--amber)] text-[color:var(--amber)]")
+          }
+        >
+          {!online
+            ? `⚠ offline · serving cached snapshot from ${updatedLabel}`
+            : fromCache
+              ? `∎ cache hit · last successful fetch ${updatedLabel}`
+              : `∎ stale data · retrying…`}
+        </div>
+      )}
+
       {/* sigma comment */}
       <div className="mt-3 border-t border-[color:var(--phosphor-dim)] pt-2">
         <div className="flex items-baseline justify-between gap-3">
@@ -153,9 +171,11 @@ export function WeatherWidget({
             {"// sigma.forecast()"}
           </div>
           <div className="text-[10px] tabular-nums text-[color:var(--phosphor-dim)]">
-            last sync {updatedLabel} · auto/{interval}m
+            {online ? "net:ok" : "net:down"} · last sync {updatedLabel} · auto/
+            {interval}m
           </div>
         </div>
+
         <div className="mt-1 text-sm text-[color:var(--amber)]">
           &gt; {sigma}
         </div>
