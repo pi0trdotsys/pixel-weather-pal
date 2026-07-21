@@ -68,6 +68,11 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         private val bgExecutor = Executors.newCachedThreadPool()
         private val DOW = arrayOf("nd", "pn", "wt", "śr", "cz", "pt", "sb")
 
+        // Bumped from 28dp now that the taller (targetCellHeight=3) layout has
+        // room to breathe — shared by the full fetch path and the cheap
+        // blink-tick partial update so both draw icons at the same size.
+        private const val ICON_DP = 42
+
         fun componentName(context: Context) = ComponentName(context, WeatherWidgetProvider::class.java)
 
         /** All currently-placed widget ids, e.g. for the periodic worker. */
@@ -86,14 +91,28 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             }
         }
 
-        /** Handles a ~60s BlinkAlarm tick: flips the shared cursor state and pushes a cheap
-         * partial update (no re-fetch) to every currently-placed widget instance. */
+        /** Handles a ~60s BlinkAlarm tick: flips the shared cursor state, advances the
+         * shared icon-animation frame counter, and pushes a cheap partial update (no
+         * network re-fetch — icon bitmaps are just re-rendered from each widget's
+         * already-cached weather codes) to every currently-placed widget instance. */
         private fun handleBlinkTick(context: Context) {
             val cursorOn = BlinkPrefs.toggle(context)
+            val frame = BlinkPrefs.advanceFrame(context)
             val appWidgetManager = AppWidgetManager.getInstance(context)
+            val iconPx = dpToPx(context, ICON_DP)
             allWidgetIds(context).forEach { id ->
                 val rv = RemoteViews(context.packageName, R.layout.weather_widget)
                 rv.setViewVisibility(R.id.widget_cursor, if (cursorOn) View.VISIBLE else View.GONE)
+                // Re-render each day's icon at the new frame from cached weather codes
+                // only — no network call, matching the "no new battery cost" tradeoff.
+                val weather = WidgetPrefs.getCachedWeather(context, id)
+                if (weather != null) {
+                    for (i in 0 until 4) {
+                        val entry = weather.daily.getOrNull(i) ?: continue
+                        val kind = Wmo.wmoToKind(entry.weatherCode)
+                        rv.setImageViewBitmap(ICON_IDS[i], PixelIcons.render(kind, iconPx, frame))
+                    }
+                }
                 try {
                     appWidgetManager.partiallyUpdateAppWidget(id, rv)
                 } catch (e: Exception) {
@@ -134,6 +153,24 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             span.setSpan(ForegroundColorSpan(amber), 0, slashIdx, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             span.setSpan(ForegroundColorSpan(green), slashIdx, text.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             return span
+        }
+
+        /** Compact "feels like / humidity / wind" line for the new data row —
+         * only surfaces fields WeatherApi actually parsed; missing/unknown
+         * readings (NaN / -1 sentinels, e.g. from an older offline cache) are
+         * simply omitted rather than shown as garbage. */
+        private fun metaLine(weather: WeatherApi.WeatherData): String {
+            val parts = mutableListOf<String>()
+            if (!weather.apparentTemperature.isNaN()) {
+                parts += "feels ${Math.round(weather.apparentTemperature)}°"
+            }
+            if (weather.humidityPercent >= 0) {
+                parts += "hum ${weather.humidityPercent}%"
+            }
+            if (!weather.windSpeedKmh.isNaN()) {
+                parts += "wind ${Math.round(weather.windSpeedKmh)}km/h"
+            }
+            return if (parts.isEmpty()) "" else parts.joinToString("  ·  ")
         }
 
         private val DAY_LABEL_IDS = intArrayOf(R.id.widget_day0_label, R.id.widget_day1_label, R.id.widget_day2_label, R.id.widget_day3_label)
@@ -187,13 +224,13 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
             val city = WidgetPrefs.getCity(context, appWidgetId)
             if (city == null) {
-                rv.setTextViewText(R.id.widget_header_label, "┌─ widget 4×2 · set city ─┐")
+                rv.setTextViewText(R.id.widget_header_label, "┌─ widget 4×3 · set city ─┐")
                 rv.setTextViewText(R.id.widget_footer_comment, "// sigma.forecast()")
                 rv.setTextViewText(R.id.widget_footer_joke, "> tap [city] to configure")
                 return rv
             }
 
-            rv.setTextViewText(R.id.widget_header_label, "┌─ widget 4×2 · ${city.name} ─┐")
+            rv.setTextViewText(R.id.widget_header_label, "┌─ widget 4×3 · ${city.name} ─┐")
 
             var isFresh = false
             val weather = try {
@@ -221,16 +258,22 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 }
             }
 
-            val iconPx = dpToPx(context, 28)
+            val iconPx = dpToPx(context, ICON_DP)
+            // Use whatever frame the blink tick last persisted so a manual
+            // refresh / periodic re-fetch stays visually in sync with it
+            // rather than resetting the animation.
+            val frame = BlinkPrefs.frame(context)
             for (i in 0 until 4) {
                 val entry = weather.daily.getOrNull(i) ?: continue
                 val dayLabel = if (i == 0) "dziś" else dowAbbrev(entry.date)
                 val kind = Wmo.wmoToKind(entry.weatherCode)
                 rv.setTextViewText(DAY_LABEL_IDS[i], dayLabel)
-                rv.setImageViewBitmap(ICON_IDS[i], PixelIcons.render(kind, iconPx))
+                rv.setImageViewBitmap(ICON_IDS[i], PixelIcons.render(kind, iconPx, frame))
                 rv.setTextViewText(TEMP_IDS[i], tempSpannable(context, entry.tempMax, entry.tempMin))
                 rv.setTextViewText(POP_IDS[i], "▽ ${entry.precipitationProbabilityMax}%")
             }
+
+            rv.setTextViewText(R.id.widget_meta_line, metaLine(weather))
 
             val kind0 = Wmo.wmoToKind(weather.currentWeatherCode)
             val isNight = !weather.isDay

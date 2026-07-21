@@ -180,6 +180,44 @@
   }
 }
 
+/* Konami-code easter egg: brief CRT power-surge flash */
+.konami-flash {
+  animation: konami-bg 3.6s ease-out both;
+}
+.konami-flash::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--phosphor);
+  mix-blend-mode: difference;
+  animation: konami-invert 3.6s steps(1) both;
+  pointer-events: none;
+}
+@keyframes konami-bg {
+  0% {
+    background: rgba(0, 0, 0, 0);
+  }
+  4% {
+    background: rgba(0, 0, 0, 0.92);
+  }
+  100% {
+    background: rgba(0, 0, 0, 0.92);
+  }
+}
+@keyframes konami-invert {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  1%,
+  3% {
+    opacity: 1;
+  }
+  2% {
+    opacity: 0;
+  }
+}
+
 /* Slow phosphor breathing glow for hero readouts (temp, widget numbers) */
 .glow-breathe {
   animation: glow-breathe 3.2s ease-in-out infinite;

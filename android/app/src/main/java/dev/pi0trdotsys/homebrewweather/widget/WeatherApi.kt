@@ -33,6 +33,13 @@ object WeatherApi {
         val isDay: Boolean,
         val currentWeatherCode: Int,
         val currentTemperature: Double,
+        // "Feels like" / humidity / wind — already requested in the
+        // `current=` query string below, just not previously surfaced by the
+        // widget. NaN/negative sentinels mean "unknown" (e.g. older cached
+        // entries written before these fields existed).
+        val apparentTemperature: Double = Double.NaN,
+        val humidityPercent: Int = -1,
+        val windSpeedKmh: Double = Double.NaN,
         val daily: List<DailyEntry>,
     )
 
@@ -95,6 +102,11 @@ object WeatherApi {
         val isDay = current.optInt("is_day", 1) == 1
         val currentCode = current.optInt("weather_code", 0)
         val currentTemp = current.optDouble("temperature_2m", Double.NaN)
+        // Already requested in the URL above (per the original web app's query)
+        // but previously left unparsed — now surfaced in the new widget meta row.
+        val apparentTemp = current.optDouble("apparent_temperature", Double.NaN)
+        val humidity = if (current.has("relative_humidity_2m")) current.optInt("relative_humidity_2m", -1) else -1
+        val windSpeed = current.optDouble("wind_speed_10m", Double.NaN)
 
         val daily = json.getJSONObject("daily")
         val times = daily.getJSONArray("time")
@@ -113,6 +125,14 @@ object WeatherApi {
                 precipitationProbabilityMax = pops?.optInt(i, 0) ?: 0,
             )
         }
-        return WeatherData(isDay = isDay, currentWeatherCode = currentCode, currentTemperature = currentTemp, daily = entries)
+        return WeatherData(
+            isDay = isDay,
+            currentWeatherCode = currentCode,
+            currentTemperature = currentTemp,
+            apparentTemperature = apparentTemp,
+            humidityPercent = humidity,
+            windSpeedKmh = windSpeed,
+            daily = entries,
+        )
     }
 }

@@ -80,6 +80,11 @@ object WidgetPrefs {
                 // existed) won't have it — NaN is treated as "unknown" by callers that
                 // care (see WeatherNotifier), never as a real reading of 0°C.
                 currentTemperature = o.optDouble("currentTemp", Double.NaN),
+                // Same "unknown" convention for the newer feels-like/humidity/wind
+                // fields — older cached blobs simply won't have these keys.
+                apparentTemperature = o.optDouble("apparentTemp", Double.NaN),
+                humidityPercent = o.optInt("humidity", -1),
+                windSpeedKmh = o.optDouble("windSpeed", Double.NaN),
                 daily = daily,
             )
         } catch (e: Exception) {
@@ -105,6 +110,9 @@ object WidgetPrefs {
             // it when it's an actual reading — optDouble() on read already defaults
             // a missing key back to NaN ("unknown").
             if (!weather.currentTemperature.isNaN()) put("currentTemp", weather.currentTemperature)
+            if (!weather.apparentTemperature.isNaN()) put("apparentTemp", weather.apparentTemperature)
+            if (weather.humidityPercent >= 0) put("humidity", weather.humidityPercent)
+            if (!weather.windSpeedKmh.isNaN()) put("windSpeed", weather.windSpeedKmh)
             put("daily", dailyArr)
         }
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -175,11 +183,16 @@ object CapacitorStorage {
 /**
  * Tiny dedicated SharedPreferences file holding just the widget cursor's
  * current on/off blink state, so every widget instance toggles in lock-step
- * on each AlarmManager tick (see [BlinkAlarm] / WeatherWidgetProvider).
+ * on each AlarmManager tick (see [BlinkAlarm] / WeatherWidgetProvider). Also
+ * holds the shared icon-animation frame counter (0..3), advanced on the same
+ * ~60s tick — piggybacking on the existing alarm rather than adding a new one
+ * (see PixelIcons.transformGrid for what each frame looks like per icon kind).
  */
 object BlinkPrefs {
     private const val PREFS_NAME = "widget_blink_prefs"
     private const val KEY_CURSOR_ON = "cursor_on"
+    private const val KEY_FRAME = "frame"
+    private const val FRAME_COUNT = 4
 
     fun isOn(context: Context): Boolean =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getBoolean(KEY_CURSOR_ON, true)
@@ -189,6 +202,20 @@ object BlinkPrefs {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val next = !prefs.getBoolean(KEY_CURSOR_ON, true)
         prefs.edit().putBoolean(KEY_CURSOR_ON, next).apply()
+        return next
+    }
+
+    /** Currently-persisted animation frame (0..3), read by a normal
+     * buildRemoteViews() fetch so it stays in sync with whatever the last
+     * blink tick set — no separate frame clock. */
+    fun frame(context: Context): Int =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getInt(KEY_FRAME, 0)
+
+    /** Advances the stored frame counter (wrapping 0..3) and returns the new value. */
+    fun advanceFrame(context: Context): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val next = (prefs.getInt(KEY_FRAME, 0) + 1) % FRAME_COUNT
+        prefs.edit().putInt(KEY_FRAME, next).apply()
         return next
     }
 }

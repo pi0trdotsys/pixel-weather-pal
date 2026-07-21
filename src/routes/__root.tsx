@@ -11,15 +11,14 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { EasterEgg } from "../components/EasterEgg";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center">
         <h1 className="font-display text-7xl crt-glow">404</h1>
-        <h2 className="mt-2 text-lg uppercase tracking-widest">
-          segfault: page not found
-        </h2>
+        <h2 className="mt-2 text-lg uppercase tracking-widest">segfault: page not found</h2>
         <p className="mt-2 text-sm text-[color:var(--phosphor-dim)]">
           {"// this route was never committed"}
         </p>
@@ -49,9 +48,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="font-display text-2xl text-[color:var(--crimson)] crt-glow">
           panic: stack overflow
         </h1>
-        <pre className="mt-2 text-xs text-[color:var(--phosphor-dim)]">
-          {error.message}
-        </pre>
+        <pre className="mt-2 text-xs text-[color:var(--phosphor-dim)]">{error.message}</pre>
         <div className="mt-4 flex gap-2">
           <button
             onClick={() => {
@@ -145,6 +142,7 @@ function RootComponent() {
       </div>
       <div className="crt-scanlines" />
       <div className="crt-vignette" />
+      <EasterEgg />
     </QueryClientProvider>
   );
 }

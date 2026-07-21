@@ -88,28 +88,28 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="9sp" />
+                    android:textSize="11sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon0"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp" />
 
                 <TextView
                     android:id="@+id/widget_temp0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="10sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/widget_pop0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="8sp" />
+                    android:textSize="10sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -124,28 +124,28 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="9sp" />
+                    android:textSize="11sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon1"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp" />
 
                 <TextView
                     android:id="@+id/widget_temp1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="10sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/widget_pop1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="8sp" />
+                    android:textSize="10sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -160,28 +160,28 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="9sp" />
+                    android:textSize="11sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon2"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp" />
 
                 <TextView
                     android:id="@+id/widget_temp2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="10sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/widget_pop2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="8sp" />
+                    android:textSize="10sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -196,30 +196,42 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="9sp" />
+                    android:textSize="11sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon3"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="2dp" />
 
                 <TextView
                     android:id="@+id/widget_temp3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="10sp" />
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/widget_pop3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="8sp" />
+                    android:textSize="10sp" />
             </LinearLayout>
         </LinearLayout>
+
+        <!-- current-conditions meta row: feels-like / humidity / wind — extra
+             real data now that the taller layout has room for it. -->
+        <TextView
+            android:id="@+id/widget_meta_line"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="2dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/widget_cyan"
+            android:textSize="10sp" />
 
         <!-- footer -->
         <TextView
@@ -230,7 +242,7 @@
             android:singleLine="true"
             android:text="// sigma.forecast()"
             android:textColor="@color/widget_green_dim"
-            android:textSize="8sp" />
+            android:textSize="9sp" />
 
         <TextView
             android:id="@+id/widget_footer_joke"
@@ -239,6 +251,6 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:textColor="@color/widget_amber"
-            android:textSize="9sp" />
+            android:textSize="10sp" />
     </LinearLayout>
 </FrameLayout>
