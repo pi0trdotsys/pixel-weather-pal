@@ -19,12 +19,21 @@ import dev.pi0trdotsys.homebrewweather.R
  * footer joke line — all of those stay exactly as they were before this
  * feature existed, so [PHOSPHOR_GREEN] (the default) renders pixel-identical
  * to the pre-theme widget.
+ *
+ * [AUTO_HEALTH] is the one exception to "primaryColorRes/dimColorRes are
+ * fixed": its color is computed live each refresh from current conditions
+ * (see WeatherWidgetProvider.computeHealthTheme()/computeComfortScore()) —
+ * its own primaryColorRes/dimColorRes here are just a placeholder ("healthy"
+ * green) never actually rendered, since buildRemoteViews() special-cases
+ * this theme and re-resolves the real color from one of the *other* three
+ * entries' color resources once weather data is available.
  */
 enum class WidgetTheme(val storageId: Int, val label: String, val primaryColorRes: Int, val dimColorRes: Int) {
     PHOSPHOR_GREEN(0, "Phosphor Green", R.color.widget_green, R.color.widget_green_dim),
     AMBER_TERMINAL(1, "Amber Terminal", R.color.widget_amber, R.color.widget_amber_dim),
     CYAN(2, "Cyan", R.color.widget_cyan, R.color.widget_cyan_dim),
-    CRIMSON(3, "Crimson", R.color.widget_crimson, R.color.widget_crimson_dim);
+    CRIMSON(3, "Crimson", R.color.widget_crimson, R.color.widget_crimson_dim),
+    AUTO_HEALTH(4, "Auto (health)", R.color.widget_green, R.color.widget_green_dim);
 
     companion object {
         val DEFAULT = PHOSPHOR_GREEN

@@ -179,6 +179,23 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
+        <!-- Auto (health): unlike the 4 fixed swatches above, this theme's color
+             is computed live from current conditions (see WidgetTheme.AUTO_HEALTH
+             + WeatherWidgetProvider.computeHealthTheme()) — full-width row of its
+             own since it's conceptually a different kind of option, not a 5th hue. -->
+        <TextView
+            android:id="@+id/theme_auto_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#0a0f0a"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:padding="10dp"
+            android:text="auto (health)"
+            android:textColor="#33ff66"
+            android:textSize="12sp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

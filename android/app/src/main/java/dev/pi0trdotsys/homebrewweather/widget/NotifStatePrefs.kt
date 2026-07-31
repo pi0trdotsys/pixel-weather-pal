@@ -46,4 +46,11 @@ object NotifStatePrefs {
     fun setSwingNotifiedDate(context: Context, appWidgetId: Int, isoDate: String) {
         prefs(context).edit().putString("swing_date_$appWidgetId", isoDate).apply()
     }
+
+    fun lastAqiNotifiedDate(context: Context, appWidgetId: Int): String? =
+        prefs(context).getString("aqi_date_$appWidgetId", null)
+
+    fun setAqiNotifiedDate(context: Context, appWidgetId: Int, isoDate: String) {
+        prefs(context).edit().putString("aqi_date_$appWidgetId", isoDate).apply()
+    }
 }

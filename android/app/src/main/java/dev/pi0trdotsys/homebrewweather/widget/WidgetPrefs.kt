@@ -54,6 +54,14 @@ object WidgetPrefs {
     private fun weatherCacheKey(appWidgetId: Int) = "weather_cache_$appWidgetId"
     private fun themeKey(appWidgetId: Int) = "theme_$appWidgetId"
     private fun transparencyKey(appWidgetId: Int) = "transparency_$appWidgetId"
+    private fun minWidthKey(appWidgetId: Int) = "min_width_$appWidgetId"
+    private fun minHeightKey(appWidgetId: Int) = "min_height_$appWidgetId"
+
+    // Match res/xml/weather_widget_info.xml's minWidth/minHeight — the sizes a
+    // widget instance renders at until the host first reports real granted
+    // options via onAppWidgetOptionsChanged (see WeatherWidgetProvider).
+    const val DEFAULT_MIN_WIDTH_DP = 250
+    const val DEFAULT_MIN_HEIGHT_DP = 180
 
     fun getCity(context: Context, appWidgetId: Int): WidgetCity? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -72,6 +80,8 @@ object WidgetPrefs {
             .remove(weatherCacheKey(appWidgetId))
             .remove(themeKey(appWidgetId))
             .remove(transparencyKey(appWidgetId))
+            .remove(minWidthKey(appWidgetId))
+            .remove(minHeightKey(appWidgetId))
             .apply()
     }
 
@@ -100,6 +110,32 @@ object WidgetPrefs {
     fun setTransparency(context: Context, appWidgetId: Int, transparency: WidgetTransparency) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putInt(transparencyKey(appWidgetId), transparency.storageId).apply()
+    }
+
+    /** Last-known min width/height (dp) the host has granted this widget instance,
+     * as reported by AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH/HEIGHT via
+     * WeatherWidgetProvider.onAppWidgetOptionsChanged() — lets buildRemoteViews()
+     * render a layout that actually fits instead of always assuming the declared
+     * default (250x180dp). Defaults to that declared default for any widget
+     * instance the host hasn't reported real options for yet. */
+    fun getLastKnownMinWidthDp(context: Context, appWidgetId: Int): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getInt(minWidthKey(appWidgetId), DEFAULT_MIN_WIDTH_DP)
+    }
+
+    fun setLastKnownMinWidthDp(context: Context, appWidgetId: Int, dp: Int) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putInt(minWidthKey(appWidgetId), dp).apply()
+    }
+
+    fun getLastKnownMinHeightDp(context: Context, appWidgetId: Int): Int {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getInt(minHeightKey(appWidgetId), DEFAULT_MIN_HEIGHT_DP)
+    }
+
+    fun setLastKnownMinHeightDp(context: Context, appWidgetId: Int, dp: Int) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putInt(minHeightKey(appWidgetId), dp).apply()
     }
 
     /** Last-known-good weather, used as an offline fallback when a refresh fails. */
@@ -132,6 +168,7 @@ object WidgetPrefs {
                 humidityPercent = o.optInt("humidity", -1),
                 windSpeedKmh = o.optDouble("windSpeed", Double.NaN),
                 currentPrecipitationProbability = o.optInt("currentPop", -1),
+                maxNext6hPop = o.optInt("next6hPop", -1),
                 usAqi = o.optInt("aqi", -1),
                 daily = daily,
             )
@@ -162,6 +199,7 @@ object WidgetPrefs {
             if (weather.humidityPercent >= 0) put("humidity", weather.humidityPercent)
             if (!weather.windSpeedKmh.isNaN()) put("windSpeed", weather.windSpeedKmh)
             if (weather.currentPrecipitationProbability >= 0) put("currentPop", weather.currentPrecipitationProbability)
+            if (weather.maxNext6hPop >= 0) put("next6hPop", weather.maxNext6hPop)
             if (weather.usAqi >= 0) put("aqi", weather.usAqi)
             put("daily", dailyArr)
         }
@@ -193,6 +231,8 @@ object CapacitorStorage {
     private const val NOTIF_LOW_THRESHOLD_KEY = "settings:notif-low-threshold"
     private const val NOTIF_SWING_ENABLED_KEY = "settings:notif-swing-enabled"
     private const val NOTIF_SWING_THRESHOLD_KEY = "settings:notif-swing-threshold"
+    private const val NOTIF_AQI_ENABLED_KEY = "settings:notif-aqi-enabled"
+    private const val NOTIF_AQI_THRESHOLD_KEY = "settings:notif-aqi-threshold"
 
     fun lastAppCity(context: Context): WidgetCity? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -228,6 +268,8 @@ object CapacitorStorage {
     fun lowThreshold(context: Context): Double = getDouble(context, NOTIF_LOW_THRESHOLD_KEY, 0.0)
     fun swingEnabled(context: Context): Boolean = getBool(context, NOTIF_SWING_ENABLED_KEY, true)
     fun swingThreshold(context: Context): Double = getDouble(context, NOTIF_SWING_THRESHOLD_KEY, 8.0)
+    fun aqiEnabled(context: Context): Boolean = getBool(context, NOTIF_AQI_ENABLED_KEY, true)
+    fun aqiThreshold(context: Context): Double = getDouble(context, NOTIF_AQI_THRESHOLD_KEY, 100.0)
 }
 
 /**

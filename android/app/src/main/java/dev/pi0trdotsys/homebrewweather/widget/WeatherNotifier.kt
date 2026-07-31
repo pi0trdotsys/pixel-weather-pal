@@ -34,6 +34,7 @@ object WeatherNotifier {
     private const val CHANNEL_RAIN = "rain_alerts"
     private const val CHANNEL_TEMP_EXTREME = "temp_extreme_alerts"
     private const val CHANNEL_TEMP_SWING = "temp_swing_alerts"
+    private const val CHANNEL_AQI = "aqi_alerts"
 
     private fun todayIso(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
@@ -52,6 +53,11 @@ object WeatherNotifier {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_TEMP_SWING, "Temperature swings", NotificationManager.IMPORTANCE_DEFAULT).apply {
                 description = "Big day-to-day temperature swings (once a day per city)"
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_AQI, "Air quality alerts", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Poor air quality thresholds crossed (once a day per city)"
             },
         )
     }
@@ -99,6 +105,7 @@ object WeatherNotifier {
         checkRain(context, appWidgetId, city, weather)
         checkHighLow(context, appWidgetId, city, weather)
         checkSwing(context, appWidgetId, city, weather)
+        checkAqi(context, appWidgetId, city, weather)
     }
 
     private fun checkRain(context: Context, appWidgetId: Int, city: WidgetCity, weather: WeatherApi.WeatherData) {
@@ -178,6 +185,35 @@ object WeatherNotifier {
             channelId = CHANNEL_TEMP_SWING,
             title = "Homebrew Weather — ${city.name}",
             text = text,
+        )
+    }
+
+    /** Once-per-day-per-widget alert when the current US AQI reading meets or
+     * exceeds the configured threshold. Skips entirely when this refresh's AQI
+     * is unknown ([WeatherApi.WeatherData.usAqi] < 0, e.g. a failed AQ fetch
+     * this cycle) — never notifies on missing data, same convention as
+     * [checkHighLow]'s NaN-temperature guard. Category label reuses
+     * [WeatherWidgetProvider.aqiLabelAndColor]'s exact breakpoints rather than
+     * redefining them here. */
+    private fun checkAqi(context: Context, appWidgetId: Int, city: WidgetCity, weather: WeatherApi.WeatherData) {
+        if (!CapacitorStorage.aqiEnabled(context)) return
+        val aqi = weather.usAqi
+        if (aqi < 0) return
+
+        val threshold = CapacitorStorage.aqiThreshold(context)
+        if (aqi < threshold) return
+
+        val today = todayIso()
+        if (NotifStatePrefs.lastAqiNotifiedDate(context, appWidgetId) == today) return
+        NotifStatePrefs.setAqiNotifiedDate(context, appWidgetId, today)
+
+        val (label, _) = WeatherWidgetProvider.aqiLabelAndColor(aqi)
+        notify(
+            context,
+            notificationId = appWidgetId * 100 + 5,
+            channelId = CHANNEL_AQI,
+            title = "Homebrew Weather — ${city.name}",
+            text = "${city.name}: AQI $aqi ($label) — maybe skip the outdoor workout",
         )
     }
 }

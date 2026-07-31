@@ -13,6 +13,7 @@ import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
@@ -25,6 +26,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 /**
  * Native home-screen widget (AppWidgetProvider + RemoteViews) that mirrors
@@ -66,17 +68,85 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         appWidgetIds.forEach { WidgetPrefs.removeCity(context, it) }
     }
 
+    /**
+     * Called by the host whenever this widget instance is first placed and again on
+     * every resize, with the currently-granted min width/height (in dp, already —
+     * no px conversion needed) in [newOptions]. Persisted per-instance (see
+     * [WidgetPrefs.setLastKnownMinWidthDp]/[setLastKnownMinHeightDp]) so
+     * [buildRemoteViews] can render a "compact" layout (see COMPACT_*_THRESHOLD_DP
+     * below) that fits the widget's actual footprint instead of the taller/wider
+     * default one — this is what makes minResizeWidth/Height (180x140dp) render
+     * without any row clipping/overlap, rather than assuming the full 250x180dp
+     * default always applies.
+     */
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle,
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        val minWidth = newOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, WidgetPrefs.DEFAULT_MIN_WIDTH_DP)
+        val minHeight = newOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, WidgetPrefs.DEFAULT_MIN_HEIGHT_DP)
+        WidgetPrefs.setLastKnownMinWidthDp(context, appWidgetId, minWidth)
+        WidgetPrefs.setLastKnownMinHeightDp(context, appWidgetId, minHeight)
+        refreshWidget(context, appWidgetManager, appWidgetId)
+    }
+
     companion object {
         const val ACTION_REFRESH = "dev.pi0trdotsys.homebrewweather.ACTION_REFRESH"
         const val ACTION_BLINK_TICK = "dev.pi0trdotsys.homebrewweather.ACTION_BLINK_TICK"
 
+        /**
+         * Debug-only seam: when true, [buildRemoteViews] skips the live network
+         * fetch entirely and renders straight from whatever's in
+         * [WidgetPrefs.getCachedWeather] for the given appWidgetId. Only ever
+         * flipped true by the debug-build-only WidgetPreviewDebugActivity (see
+         * src/debug/), so a real-device layout check can render deterministic,
+         * offline-safe sample data through the exact same RemoteViews-building
+         * code path production uses — no hand-copied approximation. Always
+         * false in any build that doesn't explicitly set it.
+         */
+        @Volatile
+        var debugForceOfflineCache: Boolean = false
+
         private val bgExecutor = Executors.newCachedThreadPool()
         private val DOW = arrayOf("nd", "pn", "wt", "śr", "cz", "pt", "sb")
 
-        // Bumped from 28dp now that the taller (targetCellHeight=3) layout has
-        // room to breathe — shared by the full fetch path and the cheap
-        // blink-tick partial update so both draw icons at the same size.
-        private const val ICON_DP = 42
+        // Sized to comfortably fit 4 columns (label + icon + temp + pop) within
+        // the widget's guaranteed min footprint (250x180dp, see
+        // weather_widget_info.xml) alongside the other fixed-height rows —
+        // shared by the full fetch path and the cheap blink-tick partial
+        // update so both draw icons at the same size.
+        private const val ICON_DP = 32
+
+        // Smaller still day-grid icon used only in compactHeight mode
+        // (minResizeHeight, 140dp) — even with the meta line + footer comment
+        // hidden, ICON_DP (32dp) leaves the grid column's temp/pop rows a few
+        // dp short of fitting, clipping the bottom off the PoP row. Shaving
+        // the icon down further closes that gap without touching the
+        // default (250x180dp) rendering at all.
+        private const val COMPACT_ICON_DP = 24
+
+        // Smaller companion icon next to the "now" line's text — deliberately
+        // sized down from the day-grid's ICON_DP so the "now" row stays a
+        // compact single line rather than growing to icon height.
+        private const val NOW_ICON_DP = 16
+
+        // Below this granted height (dp), there isn't enough vertical room for
+        // every row (header/now/grid-with-temp-and-pop/meta/footer x2) to
+        // render without clipping — see buildRemoteViews()'s compactHeight
+        // handling. 180dp (the declared default minHeight) stays non-compact;
+        // 140dp (the declared minResizeHeight) is compact.
+        private const val COMPACT_HEIGHT_THRESHOLD_DP = 160
+
+        // Below this granted width (dp), the "now" line's icon + text +
+        // best-effort AQI text can't all fit on one line without the AQI text
+        // squeezing the actual temp/rain info down to nothing — see
+        // buildRemoteViews()'s compactWidth handling. 250dp (declared default
+        // minWidth) stays non-compact; 180dp (declared minResizeWidth) is
+        // compact.
+        private const val COMPACT_WIDTH_THRESHOLD_DP = 220
 
         fun componentName(context: Context) = ComponentName(context, WeatherWidgetProvider::class.java)
 
@@ -104,10 +174,14 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             val cursorOn = BlinkPrefs.toggle(context)
             val frame = BlinkPrefs.advanceFrame(context)
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val iconPx = dpToPx(context, ICON_DP)
             allWidgetIds(context).forEach { id ->
                 val rv = RemoteViews(context.packageName, R.layout.weather_widget)
                 rv.setViewVisibility(R.id.widget_cursor, if (cursorOn) View.VISIBLE else View.GONE)
+                // Per-instance compactHeight, same threshold as buildRemoteViews(), so a
+                // blink-tick partial update draws icons at the same size the last full
+                // render used — otherwise a compact widget's icons would jump back up to
+                // full size (and re-clip the PoP row) on every ~60s tick.
+                val iconPx = dpToPx(context, if (WidgetPrefs.getLastKnownMinHeightDp(context, id) < COMPACT_HEIGHT_THRESHOLD_DP) COMPACT_ICON_DP else ICON_DP)
                 // Re-render each day's icon at the new frame from cached weather codes
                 // only — no network call, matching the "no new battery cost" tradeoff.
                 val weather = WidgetPrefs.getCachedWeather(context, id)
@@ -117,6 +191,12 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                         val kind = Wmo.wmoToKind(entry.weatherCode)
                         rv.setImageViewBitmap(ICON_IDS[i], PixelIcons.render(kind, iconPx, frame))
                     }
+                    // Keep the "now" line's icon animating in lockstep with the
+                    // day-grid icons on every blink tick too (same kind-resolution
+                    // rule as the full buildRemoteViews() path below).
+                    val nowKind = Wmo.wmoToKind(weather.currentWeatherCode)
+                    val nowIconKind = if (!weather.isDay && (nowKind == "sun" || nowKind == "partly")) "moon" else nowKind
+                    rv.setImageViewBitmap(R.id.widget_now_icon, PixelIcons.render(nowIconKind, dpToPx(context, NOW_ICON_DP), frame))
                 }
                 try {
                     appWidgetManager.partiallyUpdateAppWidget(id, rv)
@@ -192,14 +272,83 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         }
 
         /** Maps a US AQI (0..500+) reading to a short compact label + color resource,
-         * per the standard US EPA AQI category breakpoints. */
-        private fun aqiLabelAndColor(aqi: Int): Pair<String, Int> = when {
+         * per the standard US EPA AQI category breakpoints. Internal (not private):
+         * reused as-is by [WeatherNotifier]'s AQI alert text and by
+         * [computeComfortScore]'s AQI penalty, per those callers' doc comments — the
+         * category breakpoints live in exactly one place. */
+        internal fun aqiLabelAndColor(aqi: Int): Pair<String, Int> = when {
             aqi <= 50 -> "good" to R.color.widget_aqi_good
             aqi <= 100 -> "moderate" to R.color.widget_aqi_moderate
             aqi <= 150 -> "unhealthy (sensitive)" to R.color.widget_aqi_sensitive
             aqi <= 200 -> "unhealthy" to R.color.widget_aqi_unhealthy
             aqi <= 300 -> "very unhealthy" to R.color.widget_aqi_very_unhealthy
             else -> "hazardous" to R.color.widget_aqi_hazardous
+        }
+
+        /** AQI penalty term of [computeComfortScore], keyed off the exact same
+         * category labels [aqiLabelAndColor] already returns for the AQI line —
+         * never redefines the US AQI breakpoints. */
+        private fun aqiComfortPenalty(aqi: Int): Int = when (aqiLabelAndColor(aqi).first) {
+            "good" -> 0
+            "moderate" -> 15
+            "unhealthy (sensitive)" -> 35
+            "unhealthy" -> 55
+            "very unhealthy" -> 80
+            else -> 100 // "hazardous"
+        }
+
+        /**
+         * "Is it pleasant/healthy to go outside right now" comfort score (0..100,
+         * higher = better), used by [WidgetTheme.AUTO_HEALTH] to pick a color.
+         * Returns null only when there isn't even a current temperature reading
+         * to work with (e.g. a very old/partial offline cache) — every other
+         * factor here is optional and simply skipped when unavailable.
+         *
+         * Deviation from the literal spec pseudocode: the temperature factor's
+         * penalty is `min(40, 3 * distance)` (cap the *penalty*, i.e. after the
+         * 3x multiplier) rather than `3 * min(40, distance)` (which would cap
+         * the penalty at 120, not 40) — the spec's own clarifying comment
+         * ("clamp the per-factor penalty to at most 40 points") only matches the
+         * former.
+         */
+        private fun computeComfortScore(weather: WeatherApi.WeatherData): Int? {
+            val temp = weather.currentTemperature
+            if (temp.isNaN()) return null
+
+            var score = 100.0
+
+            if (temp < 18.0 || temp > 24.0) {
+                val distanceFromBand = if (temp < 18.0) 18.0 - temp else temp - 24.0
+                score -= minOf(40.0, 3.0 * distanceFromBand)
+            }
+
+            if (weather.currentPrecipitationProbability >= 0) {
+                score -= weather.currentPrecipitationProbability * 0.4
+            }
+
+            if (weather.maxNext6hPop >= 0) {
+                score -= weather.maxNext6hPop * 0.2
+            }
+
+            if (weather.usAqi >= 0) {
+                score -= aqiComfortPenalty(weather.usAqi)
+            }
+
+            return score.coerceIn(0.0, 100.0).roundToInt()
+        }
+
+        /** Picks which of the 3 fixed-hue themes [WidgetTheme.AUTO_HEALTH] should
+         * render as for this refresh, reusing their existing color resources
+         * directly rather than adding new ones (per WidgetTheme.kt's doc
+         * comment). Falls back to [WidgetTheme.PHOSPHOR_GREEN] (green/"healthy")
+         * whenever [computeComfortScore] can't compute a score at all. */
+        private fun computeHealthTheme(weather: WeatherApi.WeatherData): WidgetTheme {
+            val score = computeComfortScore(weather) ?: return WidgetTheme.PHOSPHOR_GREEN
+            return when {
+                score >= 75 -> WidgetTheme.PHOSPHOR_GREEN
+                score >= 45 -> WidgetTheme.AMBER_TERMINAL
+                else -> WidgetTheme.CRIMSON
+            }
         }
 
         private fun isOnline(context: Context): Boolean {
@@ -233,6 +382,24 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             return span
         }
 
+        /** Compact-width variant of [tempSpannable]: today's daily max only, no
+         * "/ min°" pair — the full pair reliably wraps onto a 2nd line in each
+         * ~42dp-wide grid column at minResizeWidth (180dp), and a wrapped temp
+         * pushes the PoP row below it off the bottom of the grid. Dropping the
+         * night-min figure here (still shown in the default 250dp-wide layout)
+         * is the deliberate trade-off. */
+        private fun compactTempSpannable(context: Context, dayMax: Double): SpannableString {
+            val text = "${Math.round(dayMax)}°"
+            val span = SpannableString(text)
+            span.setSpan(
+                ForegroundColorSpan(context.getColor(R.color.widget_amber)),
+                0,
+                text.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
+            return span
+        }
+
         /** Compact "feels like / humidity / wind" line for the new data row —
          * only surfaces fields WeatherApi actually parsed; missing/unknown
          * readings (NaN / -1 sentinels, e.g. from an older offline cache) are
@@ -261,6 +428,14 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         fun buildRemoteViews(context: Context, appWidgetId: Int): RemoteViews {
             val rv = RemoteViews(context.packageName, R.layout.weather_widget)
             val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
+            // See onAppWidgetOptionsChanged()'s doc comment + the COMPACT_*_THRESHOLD_DP
+            // constants: renders a trimmed-down layout (meta line + decorative footer
+            // comment hidden, AQI text hidden) when the host has granted this instance
+            // less room than the declared default 250x180dp, so minResizeWidth/Height
+            // (180x140dp) never clips or overlaps content.
+            val compactHeight = WidgetPrefs.getLastKnownMinHeightDp(context, appWidgetId) < COMPACT_HEIGHT_THRESHOLD_DP
+            val compactWidth = WidgetPrefs.getLastKnownMinWidthDp(context, appWidgetId) < COMPACT_WIDTH_THRESHOLD_DP
 
             // Tapping the body opens the app.
             val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -298,10 +473,25 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             val theme = WidgetPrefs.getTheme(context, appWidgetId)
             val transparency = WidgetPrefs.getTransparency(context, appWidgetId)
             rv.setInt(R.id.widget_root, "setBackgroundResource", transparency.drawableRes)
-            rv.setTextColor(R.id.widget_header_label, context.getColor(theme.dimColorRes))
-            rv.setTextColor(R.id.widget_cursor, context.getColor(theme.primaryColorRes))
-            rv.setTextColor(R.id.widget_now_line, context.getColor(theme.primaryColorRes))
-            DAY_LABEL_IDS.forEach { rv.setTextColor(it, context.getColor(theme.primaryColorRes)) }
+
+            fun applyThemeColors(primaryColorRes: Int, dimColorRes: Int) {
+                rv.setTextColor(R.id.widget_header_label, context.getColor(dimColorRes))
+                rv.setTextColor(R.id.widget_cursor, context.getColor(primaryColorRes))
+                rv.setTextColor(R.id.widget_now_line, context.getColor(primaryColorRes))
+                DAY_LABEL_IDS.forEach { rv.setTextColor(it, context.getColor(primaryColorRes)) }
+            }
+
+            // WidgetTheme.AUTO_HEALTH's real color depends on live weather data
+            // fetched further below — seed with its "healthy" (green) fallback here
+            // so early-return states (no city set / offline with no cache) still
+            // render with a theme color instead of looking unstyled, then
+            // recompute for real once weather data is available (see the
+            // `theme == WidgetTheme.AUTO_HEALTH` block after the weather fetch).
+            if (theme == WidgetTheme.AUTO_HEALTH) {
+                applyThemeColors(WidgetTheme.PHOSPHOR_GREEN.primaryColorRes, WidgetTheme.PHOSPHOR_GREEN.dimColorRes)
+            } else {
+                applyThemeColors(theme.primaryColorRes, theme.dimColorRes)
+            }
 
             val online = isOnline(context)
             rv.setImageViewResource(
@@ -332,12 +522,16 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             rv.setTextViewText(R.id.widget_header_label, "┌─ $liveMarker${city.name} ─┐")
 
             var isFresh = false
-            var weather = try {
-                val fresh = WeatherApi.fetchWeather(city.lat, city.lon)
-                isFresh = true
-                fresh
-            } catch (e: Exception) {
+            var weather = if (debugForceOfflineCache) {
                 WidgetPrefs.getCachedWeather(context, appWidgetId)
+            } else {
+                try {
+                    val fresh = WeatherApi.fetchWeather(city.lat, city.lon)
+                    isFresh = true
+                    fresh
+                } catch (e: Exception) {
+                    WidgetPrefs.getCachedWeather(context, appWidgetId)
+                }
             }
 
             if (weather == null) {
@@ -375,7 +569,17 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 WidgetPrefs.setCachedWeather(context, appWidgetId, weather)
             }
 
-            val iconPx = dpToPx(context, ICON_DP)
+            // Now that real weather data (including this refresh's best-effort AQI)
+            // is available, resolve WidgetTheme.AUTO_HEALTH's actual color — this
+            // overwrites the green fallback [applyThemeColors] call applied above,
+            // same "last RemoteViews call before .apply() wins" pattern used
+            // elsewhere in this function (e.g. widget_aqi_line's text/visibility).
+            if (theme == WidgetTheme.AUTO_HEALTH) {
+                val healthTheme = computeHealthTheme(weather)
+                applyThemeColors(healthTheme.primaryColorRes, healthTheme.dimColorRes)
+            }
+
+            val iconPx = dpToPx(context, if (compactHeight) COMPACT_ICON_DP else ICON_DP)
             // Use whatever frame the blink tick last persisted so a manual
             // refresh / periodic re-fetch stays visually in sync with it
             // rather than resetting the animation.
@@ -386,20 +590,49 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 val kind = Wmo.wmoToKind(entry.weatherCode)
                 rv.setTextViewText(DAY_LABEL_IDS[i], dayLabel)
                 rv.setImageViewBitmap(ICON_IDS[i], PixelIcons.render(kind, iconPx, frame))
-                rv.setTextViewText(TEMP_IDS[i], tempSpannable(context, entry.tempMax, entry.tempMin))
+                rv.setTextViewText(
+                    TEMP_IDS[i],
+                    if (compactWidth) compactTempSpannable(context, entry.tempMax) else tempSpannable(context, entry.tempMax, entry.tempMin),
+                )
                 rv.setTextViewText(POP_IDS[i], "▽ ${entry.precipitationProbabilityMax}%")
             }
 
-            rv.setTextViewText(R.id.widget_meta_line, metaLine(weather))
+            // Compact height: the feels-like/humidity/wind line and the purely
+            // decorative "// sigma.forecast()" footer comment are the two rows
+            // that can be dropped without losing anything users actually asked
+            // this widget for (temps, PoP, the joke) — freeing just enough room
+            // for the day-grid's temp/pop rows to render at minResizeHeight
+            // (140dp) instead of getting silently clipped off the bottom.
+            if (compactHeight) {
+                rv.setViewVisibility(R.id.widget_meta_line, View.GONE)
+                rv.setViewVisibility(R.id.widget_footer_comment, View.GONE)
+            } else {
+                rv.setTextViewText(R.id.widget_meta_line, metaLine(weather))
+                rv.setViewVisibility(R.id.widget_meta_line, View.VISIBLE)
+                rv.setViewVisibility(R.id.widget_footer_comment, View.VISIBLE)
+            }
 
             // "Right now" line: current temp + current chance of rain — distinct
             // from the 4-day grid above (today's daily max/min and daily-max PoP).
+            // Computed here (rather than further down where the footer joke also
+            // needs kind/isNight) so the small pixel-art icon next to this line
+            // can reuse the same kind/frame the joke and day-grid icons use.
+            val kind0 = Wmo.wmoToKind(weather.currentWeatherCode)
+            val isNight = !weather.isDay
+            val nowIconKind = if (isNight && (kind0 == "sun" || kind0 == "partly")) "moon" else kind0
+            rv.setImageViewBitmap(R.id.widget_now_icon, PixelIcons.render(nowIconKind, dpToPx(context, NOW_ICON_DP), frame))
+
             val nowParts = mutableListOf<String>()
             if (!weather.currentTemperature.isNaN()) nowParts += "now: ${Math.round(weather.currentTemperature)}°"
             if (weather.currentPrecipitationProbability >= 0) nowParts += "rain ${weather.currentPrecipitationProbability}%"
             rv.setTextViewText(R.id.widget_now_line, nowParts.joinToString(" · "))
 
-            if (weather.usAqi >= 0) {
+            // Compact width: the AQI text is the widest, least essential thing sharing
+            // the "now" row — at minResizeWidth (180dp) it would otherwise squeeze the
+            // actual now-temp/now-rain text down to nothing (0-width ellipsis). Hiding
+            // it here is the same "best-effort, drop it before you break something
+            // people actually rely on" idea as the AQI fetch's own error handling above.
+            if (weather.usAqi >= 0 && !compactWidth) {
                 val (label, colorRes) = aqiLabelAndColor(weather.usAqi)
                 val text = "AQI ${weather.usAqi} · $label"
                 val span = SpannableString(text)
@@ -411,8 +644,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 rv.setViewVisibility(R.id.widget_aqi_line, View.GONE)
             }
 
-            val kind0 = Wmo.wmoToKind(weather.currentWeatherCode)
-            val isNight = !weather.isDay
+            // kind0/isNight computed above (right before the "now" icon render).
             // Seed by current hour so the joke is stable within a refresh cycle but
             // varies across refreshes/hours, matching pickSigma()'s intent.
             val seed = (System.currentTimeMillis() / (60 * 60 * 1000L)).toInt()

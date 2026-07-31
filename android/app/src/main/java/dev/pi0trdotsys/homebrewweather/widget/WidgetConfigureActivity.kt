@@ -291,6 +291,7 @@ class WidgetConfigureActivity : Activity() {
             WidgetTheme.AMBER_TERMINAL to findViewById<TextView>(R.id.theme_amber_btn),
             WidgetTheme.CYAN to findViewById<TextView>(R.id.theme_cyan_btn),
             WidgetTheme.CRIMSON to findViewById<TextView>(R.id.theme_crimson_btn),
+            WidgetTheme.AUTO_HEALTH to findViewById<TextView>(R.id.theme_auto_btn),
         )
         themeButtons.forEach { (theme, btn) -> btn.setOnClickListener { selectTheme(theme) } }
         highlightSelectedTheme(WidgetPrefs.getTheme(this, appWidgetId))

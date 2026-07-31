@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- DEV-ONLY: real-device layout verification harness for the home
+             screen widget's RemoteViews tree (see WidgetPreviewDebugActivity's
+             own doc comment for what it does and how to launch it). This
+             manifest lives under src/debug so the activity, and this
+             registration, are only ever merged into debug builds — completely
+             absent from release, and never reachable from the launcher since
+             there is no LAUNCHER intent-filter here. -->
+        <activity
+            android:name=".widget.WidgetPreviewDebugActivity"
+            android:exported="true"
+            android:label="Widget Preview (DEBUG)"
+            android:theme="@style/AppTheme.NoActionBar" />
+    </application>
+</manifest>

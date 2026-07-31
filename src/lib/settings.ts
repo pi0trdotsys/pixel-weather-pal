@@ -35,6 +35,8 @@ export type NotificationSettings = {
   lowThreshold: number; // °C
   swingEnabled: boolean;
   swingThreshold: number; // °C, |today.max - yesterday.max| or day-to-day delta
+  aqiEnabled: boolean;
+  aqiThreshold: number; // US AQI (0-500), notify when crossed
 };
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -45,6 +47,8 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   lowThreshold: 0,
   swingEnabled: true,
   swingThreshold: 8,
+  aqiEnabled: true,
+  aqiThreshold: 100,
 };
 
 const NOTIF_KEYS: Record<keyof NotificationSettings, string> = {
@@ -55,6 +59,8 @@ const NOTIF_KEYS: Record<keyof NotificationSettings, string> = {
   lowThreshold: "settings:notif-low-threshold",
   swingEnabled: "settings:notif-swing-enabled",
   swingThreshold: "settings:notif-swing-threshold",
+  aqiEnabled: "settings:notif-aqi-enabled",
+  aqiThreshold: "settings:notif-aqi-threshold",
 };
 
 export async function loadRefreshInterval(): Promise<RefreshInterval> {

@@ -70,14 +70,22 @@
                 android:src="@drawable/ic_widget_refresh" />
         </LinearLayout>
 
-        <!-- "right now" row: current temp + current chance of rain (distinct
-             from the 4-day grid's daily max/min and daily-max PoP below),
-             plus a best-effort AQI reading when available. -->
+        <!-- "right now" row: small pixel-art current-conditions icon + current
+             temp + current chance of rain (distinct from the 4-day grid's
+             daily max/min and daily-max PoP below), plus a best-effort AQI
+             reading when available. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="2dp"
+            android:layout_marginBottom="1dp"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/widget_now_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="3dp" />
 
             <TextView
                 android:id="@+id/widget_now_line"
@@ -101,6 +109,21 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- Subtle 1dp hairline between the "right now" line and the 4-day
+             grid — purely decorative section separator, theme-agnostic
+             (translucent white reads fine over every WidgetTheme x
+             WidgetTransparency combination) so it needs no per-theme retint
+             logic. A plain TextView rather than android.view.View: RemoteViews
+             only inflates from its own view allow-list (no bare View).
+             Height-budget-neutral vs. the pre-polish layout: the row above's
+             marginBottom dropped from 2dp to 1dp to exactly offset this
+             view's 1dp height, so total footprint (and therefore the
+             140dp-tall compact layout's fit) is unchanged. -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#26FFFFFF" />
+
         <!-- 4-day body grid -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -120,28 +143,34 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <ImageView
                     android:id="@+id/widget_icon0"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
 
                 <TextView
                     android:id="@+id/widget_temp0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <TextView
                     android:id="@+id/widget_pop0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
@@ -156,28 +185,34 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <ImageView
                     android:id="@+id/widget_icon1"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
 
                 <TextView
                     android:id="@+id/widget_temp1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <TextView
                     android:id="@+id/widget_pop1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
@@ -192,28 +227,34 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <ImageView
                     android:id="@+id/widget_icon2"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
 
                 <TextView
                     android:id="@+id/widget_temp2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <TextView
                     android:id="@+id/widget_pop2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
@@ -228,28 +269,34 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_green"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <ImageView
                     android:id="@+id/widget_icon3"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
-                    android:layout_marginTop="2dp"
-                    android:layout_marginBottom="2dp" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:layout_marginBottom="1dp" />
 
                 <TextView
                     android:id="@+id/widget_temp3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="13sp" />
+                    android:textSize="13sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
 
                 <TextView
                     android:id="@+id/widget_pop3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textColor="@color/widget_cyan"
-                    android:textSize="10sp" />
+                    android:textSize="10sp"
+                    android:ellipsize="end"
+                    android:singleLine="true" />
             </LinearLayout>
         </LinearLayout>
 

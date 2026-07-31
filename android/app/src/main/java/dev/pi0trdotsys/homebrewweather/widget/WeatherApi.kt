@@ -46,6 +46,13 @@ object WeatherApi {
         // max PoP. -1 sentinel = unknown (matches this file's other optional
         // fields' convention).
         val currentPrecipitationProbability: Int = -1,
+        // Max hourly precipitation_probability over roughly the next 6 hours
+        // (inclusive of the current hour), from the same `hourly` arrays used
+        // to compute [currentPrecipitationProbability] above — a cheap
+        // near-term "is rain coming soon" signal for WidgetTheme.AUTO_HEALTH's
+        // comfort score. -1 sentinel = unknown (same convention as this
+        // file's other optional fields).
+        val maxNext6hPop: Int = -1,
         // US AQI (0..500+) from a separate, fully best-effort Open-Meteo Air
         // Quality call (see fetchAirQuality()) — never blocks/breaks the main
         // weather fetch. -1 sentinel = unknown/not fetched this refresh.
@@ -125,35 +132,47 @@ object WeatherApi {
         // the same local-time frame for a given request, so plain string
         // matching/comparison (no timezone math needed) finds "now"'s index:
         // ISO8601 date-time strings sort lexicographically = chronologically.
-        val currentPop = run {
-            val hourly = json.optJSONObject("hourly") ?: return@run -1
-            val hTimes = hourly.optJSONArray("time") ?: return@run -1
-            val hPops = hourly.optJSONArray("precipitation_probability") ?: return@run -1
-            val currentTimeStr = current.optString("time", "")
-            if (currentTimeStr.isBlank()) return@run -1
+        // Resolve "now"'s index into the hourly arrays once, then reuse it for
+        // both currentPop (this exact hour) and maxNext6hPop (a small forward
+        // window from that same index) below — same hourly arrays, no extra
+        // network call.
+        val hourly = json.optJSONObject("hourly")
+        val hTimes = hourly?.optJSONArray("time")
+        val hPops = hourly?.optJSONArray("precipitation_probability")
+        val currentTimeStr = current.optString("time", "")
 
-            var idx = -1
+        var currentIdx = -1
+        if (hTimes != null && currentTimeStr.isNotBlank()) {
             for (i in 0 until hTimes.length()) {
                 if (hTimes.optString(i) == currentTimeStr) {
-                    idx = i
+                    currentIdx = i
                     break
                 }
             }
-            if (idx == -1) {
+            if (currentIdx == -1) {
                 // No exact match (shouldn't normally happen since `current` is
                 // itself derived from the same hourly series) — fall back to
                 // the first hourly time that is >= current time, else the last
                 // available hour.
                 for (i in 0 until hTimes.length()) {
                     if (hTimes.optString(i) >= currentTimeStr) {
-                        idx = i
+                        currentIdx = i
                         break
                     }
                 }
-                if (idx == -1) idx = hTimes.length() - 1
+                if (currentIdx == -1) currentIdx = hTimes.length() - 1
             }
-            if (idx in 0 until hPops.length()) hPops.optInt(idx, -1) else -1
         }
+
+        val currentPop = if (hPops != null && currentIdx in 0 until hPops.length()) hPops.optInt(currentIdx, -1) else -1
+
+        // Roughly the next 6 hours, inclusive of the current hour — clamps to
+        // whatever the hourly array actually has (Open-Meteo's default hourly
+        // horizon comfortably covers this within forecast_days=7).
+        val maxNext6hPop = if (hPops != null && currentIdx >= 0) {
+            val endIdx = minOf(hPops.length() - 1, currentIdx + 6)
+            (currentIdx..endIdx).mapNotNull { i -> hPops.optInt(i, -1).takeIf { it >= 0 } }.maxOrNull() ?: -1
+        } else -1
 
         val daily = json.getJSONObject("daily")
         val times = daily.getJSONArray("time")
@@ -180,6 +199,7 @@ object WeatherApi {
             humidityPercent = humidity,
             windSpeedKmh = windSpeed,
             currentPrecipitationProbability = currentPop,
+            maxNext6hPop = maxNext6hPop,
             daily = entries,
         )
     }

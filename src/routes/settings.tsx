@@ -180,6 +180,18 @@ function Settings() {
               disabled={!notif.swingEnabled}
               onChange={(v) => patch({ swingThreshold: v })}
             />
+            <Toggle
+              label="air quality"
+              checked={notif.aqiEnabled}
+              onChange={(v) => patch({ aqiEnabled: v })}
+            />
+            <ThresholdInput
+              label="↳ AQI threshold"
+              value={notif.aqiThreshold}
+              disabled={!notif.aqiEnabled}
+              onChange={(v) => patch({ aqiThreshold: v })}
+              suffix="AQI"
+            />
           </div>
         </div>
 
