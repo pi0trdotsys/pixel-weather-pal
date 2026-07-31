@@ -40,6 +40,16 @@ object WeatherApi {
         val apparentTemperature: Double = Double.NaN,
         val humidityPercent: Int = -1,
         val windSpeedKmh: Double = Double.NaN,
+        // "Right now" chance of rain, sourced from the `hourly` object at the
+        // index matching `current.time` (see fetchWeather() below) — distinct
+        // from `DailyEntry.precipitationProbabilityMax`, which is today's daily
+        // max PoP. -1 sentinel = unknown (matches this file's other optional
+        // fields' convention).
+        val currentPrecipitationProbability: Int = -1,
+        // US AQI (0..500+) from a separate, fully best-effort Open-Meteo Air
+        // Quality call (see fetchAirQuality()) — never blocks/breaks the main
+        // weather fetch. -1 sentinel = unknown/not fetched this refresh.
+        val usAqi: Int = -1,
         val daily: List<DailyEntry>,
     )
 
@@ -108,6 +118,43 @@ object WeatherApi {
         val humidity = if (current.has("relative_humidity_2m")) current.optInt("relative_humidity_2m", -1) else -1
         val windSpeed = current.optDouble("wind_speed_10m", Double.NaN)
 
+        // `hourly` was already requested in the URL above but never parsed —
+        // this is where "current" (this exact hour's) rain probability comes
+        // from, as opposed to the daily grid's daily-max PoP. Open-Meteo's
+        // `current.time` and every `hourly.time[i]` are ISO-local strings in
+        // the same local-time frame for a given request, so plain string
+        // matching/comparison (no timezone math needed) finds "now"'s index:
+        // ISO8601 date-time strings sort lexicographically = chronologically.
+        val currentPop = run {
+            val hourly = json.optJSONObject("hourly") ?: return@run -1
+            val hTimes = hourly.optJSONArray("time") ?: return@run -1
+            val hPops = hourly.optJSONArray("precipitation_probability") ?: return@run -1
+            val currentTimeStr = current.optString("time", "")
+            if (currentTimeStr.isBlank()) return@run -1
+
+            var idx = -1
+            for (i in 0 until hTimes.length()) {
+                if (hTimes.optString(i) == currentTimeStr) {
+                    idx = i
+                    break
+                }
+            }
+            if (idx == -1) {
+                // No exact match (shouldn't normally happen since `current` is
+                // itself derived from the same hourly series) — fall back to
+                // the first hourly time that is >= current time, else the last
+                // available hour.
+                for (i in 0 until hTimes.length()) {
+                    if (hTimes.optString(i) >= currentTimeStr) {
+                        idx = i
+                        break
+                    }
+                }
+                if (idx == -1) idx = hTimes.length() - 1
+            }
+            if (idx in 0 until hPops.length()) hPops.optInt(idx, -1) else -1
+        }
+
         val daily = json.getJSONObject("daily")
         val times = daily.getJSONArray("time")
         val codes = daily.getJSONArray("weather_code")
@@ -132,7 +179,30 @@ object WeatherApi {
             apparentTemperature = apparentTemp,
             humidityPercent = humidity,
             windSpeedKmh = windSpeed,
+            currentPrecipitationProbability = currentPop,
             daily = entries,
         )
+    }
+
+    /**
+     * Separate Open-Meteo Air Quality API call (different host, no key, same
+     * no-backend philosophy as the rest of this file). Fully best-effort by
+     * design: returns null on any failure (network hiccup, AQ API briefly
+     * down, unexpected shape) rather than throwing, so a caller can simply
+     * omit the AQI line for a refresh instead of risking the main weather
+     * fetch/render.
+     */
+    fun fetchAirQuality(lat: Double, lon: Double): Int? {
+        return try {
+            val url = "https://air-quality-api.open-meteo.com/v1/air-quality" +
+                "?latitude=$lat&longitude=$lon&current=us_aqi&timezone=auto"
+            val json = httpGetJson(url)
+            val current = json.optJSONObject("current") ?: return null
+            if (!current.has("us_aqi")) return null
+            val aqi = current.optInt("us_aqi", -1)
+            if (aqi >= 0) aqi else null
+        } catch (e: Exception) {
+            null
+        }
     }
 }

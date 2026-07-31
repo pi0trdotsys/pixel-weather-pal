@@ -1,11 +1,15 @@
 package dev.pi0trdotsys.homebrewweather.widget
 
+import android.Manifest
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -14,6 +18,7 @@ import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.view.View
 import android.widget.RemoteViews
+import androidx.core.content.ContextCompat
 import dev.pi0trdotsys.homebrewweather.MainActivity
 import dev.pi0trdotsys.homebrewweather.R
 import java.text.SimpleDateFormat
@@ -124,6 +129,79 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         private fun dpToPx(context: Context, dp: Int): Int =
             Math.round(dp * context.resources.displayMetrics.density)
 
+        /**
+         * "Follow my location" (WidgetCity.isLive) resolution for a background
+         * refresh. A background context can't easily run a full
+         * requestLocationUpdates()-with-timeout loop the way the foreground
+         * WidgetConfigureActivity does (see requestLocationFix()/safeLastKnown()
+         * there) — so, same pragmatic beta-appropriate tradeoff as BlinkAlarm's
+         * doc comment elsewhere in this file: a best-effort
+         * getLastKnownLocation() across providers is the right, simpler choice
+         * here, not a fresh GPS fix.
+         *
+         * Returns [storedCity] unchanged when it isn't in live mode. When it is
+         * live but no last-known fix is available from any provider (e.g. right
+         * after boot, before any provider has a fix), also gracefully returns
+         * [storedCity] as-is rather than crashing or blanking the widget.
+         * Otherwise re-resolves lat/lon (+ a best-effort reverse-geocoded name)
+         * and persists the refreshed WidgetCity so the offline-fallback cache
+         * and header label stay current too.
+         */
+        private fun resolveEffectiveCity(context: Context, appWidgetId: Int, storedCity: WidgetCity): WidgetCity {
+            if (!storedCity.isLive) return storedCity
+            val location = bestEffortLastKnownLocation(context) ?: return storedCity
+
+            val geo = try {
+                WeatherApi.reverseGeocode(location.latitude, location.longitude)
+            } catch (e: Exception) {
+                null
+            }
+            val updated = WidgetCity(
+                lat = location.latitude,
+                lon = location.longitude,
+                name = geo?.name ?: storedCity.name,
+                isLive = true,
+            )
+            WidgetPrefs.setCity(context, appWidgetId, updated)
+            return updated
+        }
+
+        /** Best-effort getLastKnownLocation() across GPS/network/passive providers —
+         * never requests a fresh fix, never throws (permission or provider errors are
+         * swallowed), just returns the first non-null cached fix or null. */
+        private fun bestEffortLastKnownLocation(context: Context): Location? {
+            val fineGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+            val coarseGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+            if (!fineGranted && !coarseGranted) return null
+
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+            val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+            for (provider in providers) {
+                try {
+                    val loc = lm.getLastKnownLocation(provider)
+                    if (loc != null) return loc
+                } catch (e: SecurityException) {
+                    // no permission for this provider — try the next one
+                } catch (e: IllegalArgumentException) {
+                    // provider not present on this device — try the next one
+                }
+            }
+            return null
+        }
+
+        /** Maps a US AQI (0..500+) reading to a short compact label + color resource,
+         * per the standard US EPA AQI category breakpoints. */
+        private fun aqiLabelAndColor(aqi: Int): Pair<String, Int> = when {
+            aqi <= 50 -> "good" to R.color.widget_aqi_good
+            aqi <= 100 -> "moderate" to R.color.widget_aqi_moderate
+            aqi <= 150 -> "unhealthy (sensitive)" to R.color.widget_aqi_sensitive
+            aqi <= 200 -> "unhealthy" to R.color.widget_aqi_unhealthy
+            aqi <= 300 -> "very unhealthy" to R.color.widget_aqi_very_unhealthy
+            else -> "hazardous" to R.color.widget_aqi_hazardous
+        }
+
         private fun isOnline(context: Context): Boolean {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
             val network = cm.activeNetwork ?: return false
@@ -211,6 +289,20 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             val refreshPending = PendingIntent.getBroadcast(context, appWidgetId * 10 + 2, refreshIntent, pendingFlags)
             rv.setOnClickPendingIntent(R.id.widget_refresh_btn, refreshPending)
 
+            // Per-widget-instance personalization (theme + background transparency) —
+            // see WidgetConfigureActivity's theme/transparency pickers and
+            // WidgetTheme.kt's doc comments for exactly which views these touch and
+            // which stay fixed regardless of theme. Applied unconditionally, before
+            // any of the early-return states below, so even the "set city" /
+            // "offline, no cache" placeholder states respect the chosen look.
+            val theme = WidgetPrefs.getTheme(context, appWidgetId)
+            val transparency = WidgetPrefs.getTransparency(context, appWidgetId)
+            rv.setInt(R.id.widget_root, "setBackgroundResource", transparency.drawableRes)
+            rv.setTextColor(R.id.widget_header_label, context.getColor(theme.dimColorRes))
+            rv.setTextColor(R.id.widget_cursor, context.getColor(theme.primaryColorRes))
+            rv.setTextColor(R.id.widget_now_line, context.getColor(theme.primaryColorRes))
+            DAY_LABEL_IDS.forEach { rv.setTextColor(it, context.getColor(theme.primaryColorRes)) }
+
             val online = isOnline(context)
             rv.setImageViewResource(
                 R.id.widget_online_dot,
@@ -222,20 +314,26 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             // BlinkAlarm.kt for why it's a discrete toggle, not a smooth blink).
             rv.setViewVisibility(R.id.widget_cursor, if (BlinkPrefs.isOn(context)) View.VISIBLE else View.GONE)
 
-            val city = WidgetPrefs.getCity(context, appWidgetId)
-            if (city == null) {
-                rv.setTextViewText(R.id.widget_header_label, "┌─ widget 4×3 · set city ─┐")
+            val storedCity = WidgetPrefs.getCity(context, appWidgetId)
+            if (storedCity == null) {
+                rv.setTextViewText(R.id.widget_header_label, "┌─ set city ─┐")
                 rv.setTextViewText(R.id.widget_footer_comment, "// sigma.forecast()")
                 rv.setTextViewText(R.id.widget_footer_joke, "> tap [city] to configure")
+                rv.setViewVisibility(R.id.widget_aqi_line, View.GONE)
                 return rv
             }
 
-            rv.setTextViewText(R.id.widget_header_label, "┌─ widget 4×3 · ${city.name} ─┐")
+            // "Follow my location" (isLive) widgets re-acquire the device's current
+            // location on every refresh instead of trusting a frozen snapshot — see
+            // resolveEffectiveCity() for the (best-effort, background-safe) approach.
+            val city = resolveEffectiveCity(context, appWidgetId, storedCity)
+
+            val liveMarker = if (city.isLive) "◎ " else ""
+            rv.setTextViewText(R.id.widget_header_label, "┌─ $liveMarker${city.name} ─┐")
 
             var isFresh = false
-            val weather = try {
+            var weather = try {
                 val fresh = WeatherApi.fetchWeather(city.lat, city.lon)
-                WidgetPrefs.setCachedWeather(context, appWidgetId, fresh)
                 isFresh = true
                 fresh
             } catch (e: Exception) {
@@ -244,6 +342,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
             if (weather == null) {
                 rv.setTextViewText(R.id.widget_footer_joke, "> offline — no cached data yet")
+                rv.setViewVisibility(R.id.widget_aqi_line, View.GONE)
                 return rv
             }
 
@@ -256,6 +355,24 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 } catch (e: Exception) {
                     // best-effort, never break the widget refresh
                 }
+
+                // Separate Air Quality API call (different host) — fully best-effort:
+                // a failure here must never blank/break the main weather render. On
+                // failure, fall back to whatever AQI value was last cached rather than
+                // just dropping the line.
+                val aqi = try {
+                    WeatherApi.fetchAirQuality(city.lat, city.lon)
+                } catch (e: Exception) {
+                    null
+                }
+                weather = if (aqi != null) {
+                    weather.copy(usAqi = aqi)
+                } else {
+                    val cachedAqi = WidgetPrefs.getCachedWeather(context, appWidgetId)?.usAqi ?: -1
+                    if (cachedAqi >= 0) weather.copy(usAqi = cachedAqi) else weather
+                }
+
+                WidgetPrefs.setCachedWeather(context, appWidgetId, weather)
             }
 
             val iconPx = dpToPx(context, ICON_DP)
@@ -274,6 +391,25 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             }
 
             rv.setTextViewText(R.id.widget_meta_line, metaLine(weather))
+
+            // "Right now" line: current temp + current chance of rain — distinct
+            // from the 4-day grid above (today's daily max/min and daily-max PoP).
+            val nowParts = mutableListOf<String>()
+            if (!weather.currentTemperature.isNaN()) nowParts += "now: ${Math.round(weather.currentTemperature)}°"
+            if (weather.currentPrecipitationProbability >= 0) nowParts += "rain ${weather.currentPrecipitationProbability}%"
+            rv.setTextViewText(R.id.widget_now_line, nowParts.joinToString(" · "))
+
+            if (weather.usAqi >= 0) {
+                val (label, colorRes) = aqiLabelAndColor(weather.usAqi)
+                val text = "AQI ${weather.usAqi} · $label"
+                val span = SpannableString(text)
+                span.setSpan(ForegroundColorSpan(context.getColor(colorRes)), 0, text.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                rv.setTextViewText(R.id.widget_aqi_line, span)
+                rv.setViewVisibility(R.id.widget_aqi_line, View.VISIBLE)
+            } else {
+                rv.setTextViewText(R.id.widget_aqi_line, "")
+                rv.setViewVisibility(R.id.widget_aqi_line, View.GONE)
+            }
 
             val kind0 = Wmo.wmoToKind(weather.currentWeatherCode)
             val isNight = !weather.isDay

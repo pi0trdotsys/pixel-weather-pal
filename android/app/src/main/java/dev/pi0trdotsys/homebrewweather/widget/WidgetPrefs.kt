@@ -3,12 +3,24 @@ package dev.pi0trdotsys.homebrewweather.widget
 import android.content.Context
 import org.json.JSONObject
 
-/** A saved city for one particular widget instance. */
-data class WidgetCity(val lat: Double, val lon: Double, val name: String) {
+/**
+ * A saved city for one particular widget instance.
+ *
+ * [isLive] marks "follow my location" (a.k.a. live/follow) mode: when true,
+ * [lat]/[lon]/[name] are just the *last-resolved* snapshot (kept up to date
+ * so the offline-fallback cache and header label have something sane to show
+ * immediately/offline), but every refresh re-acquires the device's current
+ * location and re-resolves against that instead of trusting this frozen
+ * point — see [WeatherWidgetProvider]'s refresh path. Cities picked by name
+ * search always have isLive = false (a plain fixed point, unchanged
+ * behavior).
+ */
+data class WidgetCity(val lat: Double, val lon: Double, val name: String, val isLive: Boolean = false) {
     fun toJson(): String = JSONObject().apply {
         put("lat", lat)
         put("lon", lon)
         put("name", name)
+        put("isLive", isLive)
     }.toString()
 
     companion object {
@@ -20,6 +32,9 @@ data class WidgetCity(val lat: Double, val lon: Double, val name: String) {
                     lat = o.getDouble("lat"),
                     lon = o.getDouble("lon"),
                     name = o.optString("name", "?"),
+                    // Missing key = older entries written before "follow my
+                    // location" mode existed -> default false (fixed point).
+                    isLive = o.optBoolean("isLive", false),
                 )
             } catch (e: Exception) {
                 null
@@ -37,6 +52,8 @@ object WidgetPrefs {
     private const val PREFS_NAME = "widget_city_prefs"
     private fun cityKey(appWidgetId: Int) = "city_$appWidgetId"
     private fun weatherCacheKey(appWidgetId: Int) = "weather_cache_$appWidgetId"
+    private fun themeKey(appWidgetId: Int) = "theme_$appWidgetId"
+    private fun transparencyKey(appWidgetId: Int) = "transparency_$appWidgetId"
 
     fun getCity(context: Context, appWidgetId: Int): WidgetCity? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -53,7 +70,36 @@ object WidgetPrefs {
         prefs.edit()
             .remove(cityKey(appWidgetId))
             .remove(weatherCacheKey(appWidgetId))
+            .remove(themeKey(appWidgetId))
+            .remove(transparencyKey(appWidgetId))
             .apply()
+    }
+
+    /** Per-widget-instance color theme (see [WidgetTheme]). Defaults to
+     * [WidgetTheme.DEFAULT] (Phosphor Green) for any widget that's never had
+     * this explicitly set, so existing/never-configured widgets render
+     * exactly as they did before this feature existed. */
+    fun getTheme(context: Context, appWidgetId: Int): WidgetTheme {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return WidgetTheme.fromStorageId(prefs.getInt(themeKey(appWidgetId), WidgetTheme.DEFAULT.storageId))
+    }
+
+    fun setTheme(context: Context, appWidgetId: Int, theme: WidgetTheme) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putInt(themeKey(appWidgetId), theme.storageId).apply()
+    }
+
+    /** Per-widget-instance background fill transparency (see [WidgetTransparency]).
+     * Defaults to [WidgetTransparency.DEFAULT] (Opaque) for the same
+     * never-configured-widgets-look-unchanged reason as [getTheme]. */
+    fun getTransparency(context: Context, appWidgetId: Int): WidgetTransparency {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return WidgetTransparency.fromStorageId(prefs.getInt(transparencyKey(appWidgetId), WidgetTransparency.DEFAULT.storageId))
+    }
+
+    fun setTransparency(context: Context, appWidgetId: Int, transparency: WidgetTransparency) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putInt(transparencyKey(appWidgetId), transparency.storageId).apply()
     }
 
     /** Last-known-good weather, used as an offline fallback when a refresh fails. */
@@ -85,6 +131,8 @@ object WidgetPrefs {
                 apparentTemperature = o.optDouble("apparentTemp", Double.NaN),
                 humidityPercent = o.optInt("humidity", -1),
                 windSpeedKmh = o.optDouble("windSpeed", Double.NaN),
+                currentPrecipitationProbability = o.optInt("currentPop", -1),
+                usAqi = o.optInt("aqi", -1),
                 daily = daily,
             )
         } catch (e: Exception) {
@@ -113,6 +161,8 @@ object WidgetPrefs {
             if (!weather.apparentTemperature.isNaN()) put("apparentTemp", weather.apparentTemperature)
             if (weather.humidityPercent >= 0) put("humidity", weather.humidityPercent)
             if (!weather.windSpeedKmh.isNaN()) put("windSpeed", weather.windSpeedKmh)
+            if (weather.currentPrecipitationProbability >= 0) put("currentPop", weather.currentPrecipitationProbability)
+            if (weather.usAqi >= 0) put("aqi", weather.usAqi)
             put("daily", dailyArr)
         }
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

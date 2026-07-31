@@ -7,4 +7,25 @@
     <color name="widget_cyan">#55ffff</color>
     <color name="widget_online">#33ff66</color>
     <color name="widget_offline">#ff5555</color>
+
+    <!-- Per-widget-instance color theme palette (see WidgetTheme.kt). Each
+         non-default theme reuses a primary hue already present in the app's
+         palette above and pairs it with a purpose-built dim/"comment" shade
+         for the header/footer role — these dim shades don't correspond to
+         anything else in the app so they get their own entries here. -->
+    <color name="widget_amber_dim">#806000</color>
+    <color name="widget_cyan_dim">#2a6666</color>
+    <color name="widget_crimson">#ff5555</color>
+    <color name="widget_crimson_dim">#703030</color>
+
+    <!-- AQI category colors (US AQI 0..500+ breakpoints) — kept as their own
+         named entries (not reused from widget_green/widget_amber above) so a
+         future per-widget theme pass can retint AQI categories independently
+         of the base terminal palette. -->
+    <color name="widget_aqi_good">#33ff66</color>
+    <color name="widget_aqi_moderate">#ffb000</color>
+    <color name="widget_aqi_sensitive">#ff7a1a</color>
+    <color name="widget_aqi_unhealthy">#ff3b3b</color>
+    <color name="widget_aqi_very_unhealthy">#a64dff</color>
+    <color name="widget_aqi_hazardous">#7f0000</color>
 </resources>

@@ -1,0 +1,55 @@
+package dev.pi0trdotsys.homebrewweather.widget
+
+import dev.pi0trdotsys.homebrewweather.R
+
+/**
+ * Per-widget-instance color theme (a beta "personalization" feature — see
+ * WidgetConfigureActivity's theme swatches). Each theme supplies just the
+ * two color roles [WeatherWidgetProvider.buildRemoteViews] actually retints
+ * via plain `RemoteViews.setTextColor()` calls (no API 31+ ColorStateList
+ * calls, so this stays minSdk 24-safe):
+ *  - [primaryColorRes]: the widget's main "terminal text" hue (cursor, the
+ *    "right now" line, the day-grid day labels).
+ *  - [dimColorRes]: the softer "comment"-style hue used for the header label.
+ *
+ * Deliberately NOT touched by any theme (kept as fixed, semantic/accent
+ * colors regardless of theme — see WeatherWidgetProvider for where each
+ * lives): the AQI category colors, the online/offline dot, the cyan
+ * meta/PoP lines, the amber max/min split in tempSpannable(), and the amber
+ * footer joke line — all of those stay exactly as they were before this
+ * feature existed, so [PHOSPHOR_GREEN] (the default) renders pixel-identical
+ * to the pre-theme widget.
+ */
+enum class WidgetTheme(val storageId: Int, val label: String, val primaryColorRes: Int, val dimColorRes: Int) {
+    PHOSPHOR_GREEN(0, "Phosphor Green", R.color.widget_green, R.color.widget_green_dim),
+    AMBER_TERMINAL(1, "Amber Terminal", R.color.widget_amber, R.color.widget_amber_dim),
+    CYAN(2, "Cyan", R.color.widget_cyan, R.color.widget_cyan_dim),
+    CRIMSON(3, "Crimson", R.color.widget_crimson, R.color.widget_crimson_dim);
+
+    companion object {
+        val DEFAULT = PHOSPHOR_GREEN
+
+        fun fromStorageId(id: Int): WidgetTheme = values().firstOrNull { it.storageId == id } ?: DEFAULT
+    }
+}
+
+/**
+ * Per-widget-instance background fill transparency (independent axis from
+ * [WidgetTheme] — every theme is available at every transparency level, no
+ * theme x transparency drawable matrix). Only the fill alpha of
+ * widget_background differs between these four drawables; border/stroke and
+ * corner geometry are identical across all of them — see the
+ * widget_background_*.xml comments.
+ */
+enum class WidgetTransparency(val storageId: Int, val label: String, val drawableRes: Int) {
+    OPAQUE(0, "Opaque (100%)", R.drawable.widget_background_100),
+    HIGH(1, "High (85%)", R.drawable.widget_background_85),
+    MEDIUM(2, "Medium (60%)", R.drawable.widget_background_60),
+    LOW(3, "Low (35%)", R.drawable.widget_background_35);
+
+    companion object {
+        val DEFAULT = OPAQUE
+
+        fun fromStorageId(id: Int): WidgetTransparency = values().firstOrNull { it.storageId == id } ?: DEFAULT
+    }
+}

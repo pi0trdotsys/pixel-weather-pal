@@ -11,6 +11,9 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "CPU throttling from heat. So is your brain.",
     "Bright enough to finally see the whiteboard bugs.",
     "`export SUNSHINE=true` — no restart required.",
+    "Clear skies, clear cache, clear conscience for once.",
+    "`assert weather.clouds == 0` — passes for once.",
+    "Solar-powered productivity, briefly.",
   ],
   partly: [
     "50% clouds, 50% clarity. Just like your requirements.",
@@ -19,6 +22,8 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "Schrödinger's forecast: both sunny and not, until observed.",
     "Flaky test detected: weather.status is nondeterministic.",
     "A/B testing the sky today.",
+    "Merge conflict between sun.branch and cloud.branch.",
+    "Race condition: cloud and sun both trying to render first.",
   ],
   cloud: [
     "Overcast. Perfect lighting for a dark theme.",
@@ -27,6 +32,8 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "Gray sky, gray Slack, gray coffee. Balanced.",
     "100% cloud coverage, 0% cloud compute.",
     "Overcast — nature's `prefers-color-scheme: dark`.",
+    "The sky's rendering a loading spinner. Please wait.",
+    "Gray CI, gray sky, gray hopes for the deploy.",
   ],
   fog: [
     "Visibility low. Just like your test coverage.",
@@ -35,6 +42,8 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "`grep -r 'sun' /sky/` → no matches.",
     "Stack trace: obscured by weather.fog(dense=true).",
     "404: horizon not found.",
+    "Documentation as clear as this fog.",
+    "`try { see(horizon) } catch { squint() }`",
   ],
   rain: [
     "It's raining. Perfect time to `git blame`.",
@@ -45,6 +54,9 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "Precipitation: 100%. Motivation: 404.",
     "`try { walk() } catch (Rain e) { stayIndoors() }`",
     "The cloud finally pushed its changes.",
+    "Umbrella.exe has stopped working.",
+    "Every drop a tiny `console.log('wet')`.",
+    "The forecast API returned 200 OK, you did not.",
   ],
   snow: [
     "Snow day. Merge conflicts still exist.",
@@ -53,6 +65,8 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "Snowflake type detected. Everywhere.",
     "White screen of death, but outside.",
     "Cache invalidated by frost.",
+    "Every flake unique, unlike your commit messages.",
+    "`git status`: everything is white, nothing is staged.",
   ],
   thunder: [
     "Thunder detected. Unplug the servers.",
@@ -61,6 +75,8 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "Prod is down. Also the power.",
     "Uncaught exception: SkyException at line 0.",
     "Latency spike caused by literal lightning.",
+    "The sky just force-pushed to main.",
+    "Segmentation fault (core dumped by Zeus).",
   ],
   night: [
     "It's late. `commit -m 'wip'` and sleep.",
@@ -69,6 +85,8 @@ export const JOKES: Record<WeatherKind | "night", string[]> = {
     "Night shift. The rubber duck is listening.",
     "`cron.schedule('0 3 * * *', panic)`",
     "Still awake debugging life choices.",
+    "`while(true) { doomscroll(); regret(); }`",
+    "The moon compiled fine. You did not.",
   ],
 };
 

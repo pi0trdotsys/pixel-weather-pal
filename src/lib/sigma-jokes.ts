@@ -16,6 +16,11 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "+30°C na dworze, +2 w twoim koncie bankowym",
     "słońce nie bierze L9, a ty bierzesz kolejny sick day",
     "piękny dzień żeby wyjść z domu i przestać być swoim własnym hejterem",
+    "słońce non-stop, ty non-stop w łóżku, kto tu kogo ogrzewa",
+    "witamina D za darmo, szkoda że silnej woli nie rozdają tak samo",
+    "idealna pogoda na cardio, ty i tak wybierzesz cardio na kanapie",
+    "sigma łapie opaleniznę i kontrakty, beta łapie tylko powiadomienia",
+    "słońce w zenicie, twoje ambicje wciąż w fazie planowania",
   ],
   partly: [
     "chmury się nie mogą zdecydować, jak twoja ex",
@@ -28,6 +33,9 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "pogoda w sam raz na 'jeszcze pięć minut i wstaję'",
     "chmury przelotne, twoje plany życiowe jeszcze bardziej",
     "połowicznie słonecznie, połowicznie jak twój set na siłce",
+    "niebo w trybie demo, pełna wersja dostępna po aktualizacji charakteru",
+    "częściowo zachmurzone, całkowicie nieokreślone jak twoje plany na wieczór",
+    "pogoda 'może', jak twoja odpowiedź na każde zaproszenie na siłkę",
   ],
   cloud: [
     "szaro-buro, idealnie pod depresję i redbulla",
@@ -40,6 +48,9 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "pochmurnie, ale i tak jaśniej niż perspektywy bez porannej rutyny",
     "niebo w kolorze twojego nastroju o 6 rano",
     "chmury nisko, standardy jeszcze niżej, ale to się zaraz zmieni",
+    "szaro jak twój Excel z budżetem, którego nigdy nie otwierasz",
+    "zachmurzenie jak twoja motywacja — teoretycznie jest, praktycznie nie widać",
+    "niebo bez słońca, ty bez planu, klasyczny wtorek",
   ],
   fog: [
     "mgła gęstsza niż twój wywód po piątym piwie",
@@ -51,6 +62,9 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "mgła jak twój umysł przed pierwszą kawą — i po niej",
     "nic nie widać, więc nikt nie widzi że dziś też olałeś plan dnia",
     "gęsto jak atmosfera po tym jak znowu obiecałeś 'od jutra zaczynam'",
+    "mgła zasłania horyzont, twoje wymówki zasłaniają resztę",
+    "widoczność ograniczona, podobnie jak twoja tolerancja na poranki",
+    "gęsta mgła, rzadkie postanowienia noworoczne wciąż aktywne",
   ],
   rain: [
     "leje jak w mordę. bierz kurtkę albo bądź twardy",
@@ -65,6 +79,10 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "burza się zbliża, ty się nie zbliżasz nawet do siłki",
     "deszcz nie pyta o zgodę, twój szef też nie będzie",
     "pada jak diably, wstawaj i rusz dupsko zanim się rozmyślisz",
+    "leje od rana, ty leżysz od rana, koincydencja? nie sądzę",
+    "krople na szybie, wymówki w głowie, jedno z tego jest prawdziwe",
+    "deszczowo, ale kaptur na głowę i chodu, sigma się nie rozpuszcza",
+    "parasol zapomniany, charakter też, wracaj po jedno i drugie",
   ],
   snow: [
     "śnieg. zimno jak serce twojej ex",
@@ -77,6 +95,9 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "biało wszędzie, jak twój brak pomysłu na to życie",
     "śnieg sypie, ty dalej śpisz, klasyczny beta scenariusz",
     "mróz szczypie mocniej niż twój ostatni wyciąg z konta",
+    "biały puch na dworze, biała flaga w twoich planach na trening",
+    "zimno jak w komentarzach pod twoim ostatnim pomysłem na biznes",
+    "śnieg pada równo, twoje motywacja nierówno, ale idziemy dalej",
   ],
   thunder: [
     "burza. bogowie się jarają, ty się nie chowaj",
@@ -88,6 +109,9 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "piorun bije, adrenalina bije, w końcu coś w tobie bije",
     "burza na niebie, chaos w twoim planie dnia, standard",
     "grzmi jak twój żołądek po tym jak znowu zjadłeś fast food zamiast obiadu",
+    "błyskawica na niebie, zero błyskawicy w twoich decyzjach",
+    "burza się zbliża, deadline też, oba ignorujesz z tym samym spokojem",
+    "grzmoty głośne, twoje 'zaraz zaczynam' głośniejsze od lat",
   ],
   night: [
     "noc. sigma trenuje, beta scrolluje reelsy",
@@ -99,6 +123,9 @@ const SIGMA: Record<WeatherKind | "night", string[]> = {
     "gwiazdy świecą, ty gaśniesz, odwróć to jutro",
     "noc sowy, ale sowa przynajmniej ma plan na jutro",
     "śpij. jutro znowu trzeba udawać że masz to ogarnięte",
+    "ciemność na zewnątrz, jasność telefonu w oczy, klasyczne 2 w nocy",
+    "gwiazd nie widać w mieście, twoich planów też nie widać nigdzie",
+    "noc jak twoje sumienie po piątym odcinku zamiast spać",
   ],
 };
 

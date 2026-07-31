@@ -16,6 +16,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
@@ -39,6 +40,10 @@ class WidgetConfigureActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var resultsContainer: LinearLayout
     private lateinit var suggestionBtn: TextView
+
+    private lateinit var themeButtons: Map<WidgetTheme, TextView>
+    private lateinit var transparencySeekbar: SeekBar
+    private lateinit var transparencyValueText: TextView
 
     private var locationListener: LocationListener? = null
 
@@ -71,6 +76,7 @@ class WidgetConfigureActivity : Activity() {
 
         showLastAppCitySuggestion()
         maybeRequestNotificationPermission()
+        setupPersonalization()
     }
 
     /**
@@ -243,7 +249,12 @@ class WidgetConfigureActivity : Activity() {
             } catch (e: Exception) {
                 null
             }
-            val city = WidgetCity(lat, lon, geo?.name ?: "current location")
+            // "Use my location" always saves live/follow mode, not a one-time
+            // snapshot — see WidgetCity.isLive doc + WeatherWidgetProvider's
+            // refresh path, which re-acquires the location on every refresh
+            // from here on. Searching a city by name (buildResultRow /
+            // suggestionBtn) stays a plain fixed point (isLive defaults false).
+            val city = WidgetCity(lat, lon, geo?.name ?: "current location", isLive = true)
             mainHandler.post { selectCity(city) }
         }
     }
@@ -261,12 +272,83 @@ class WidgetConfigureActivity : Activity() {
                 // widget will retry on the next periodic/manual refresh
             }
             WeatherWorker.enqueuePeriodic(applicationContext)
-            mainHandler.post { finishAfterSelection() }
+            mainHandler.post { finishAfterSelection(city.isLive) }
         }
     }
 
-    private fun finishAfterSelection() {
-        Toast.makeText(this, "Widget city set to saved location", Toast.LENGTH_SHORT).show()
+    /**
+     * Wires up the theme swatches + transparency seekbar (beta
+     * "personalization" section below the city picker) and restores whatever
+     * this widget instance already has saved — [WidgetTheme.DEFAULT] /
+     * [WidgetTransparency.DEFAULT] (Phosphor Green / Opaque) for a widget
+     * that's never had these set, matching the pre-personalization look
+     * exactly. Both controls apply immediately on change, same as
+     * [selectCity] does for the city picker above — no separate save step.
+     */
+    private fun setupPersonalization() {
+        themeButtons = mapOf(
+            WidgetTheme.PHOSPHOR_GREEN to findViewById<TextView>(R.id.theme_phosphor_btn),
+            WidgetTheme.AMBER_TERMINAL to findViewById<TextView>(R.id.theme_amber_btn),
+            WidgetTheme.CYAN to findViewById<TextView>(R.id.theme_cyan_btn),
+            WidgetTheme.CRIMSON to findViewById<TextView>(R.id.theme_crimson_btn),
+        )
+        themeButtons.forEach { (theme, btn) -> btn.setOnClickListener { selectTheme(theme) } }
+        highlightSelectedTheme(WidgetPrefs.getTheme(this, appWidgetId))
+
+        transparencySeekbar = findViewById(R.id.transparency_seekbar)
+        transparencyValueText = findViewById(R.id.transparency_value)
+        val currentTransparency = WidgetPrefs.getTransparency(this, appWidgetId)
+        transparencySeekbar.progress = currentTransparency.storageId
+        transparencyValueText.text = "> ${currentTransparency.label}"
+        transparencySeekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val transparency = WidgetTransparency.fromStorageId(progress)
+                transparencyValueText.text = "> ${transparency.label}"
+                WidgetPrefs.setTransparency(this@WidgetConfigureActivity, appWidgetId, transparency)
+                pushWidgetUpdate()
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+    }
+
+    private fun selectTheme(theme: WidgetTheme) {
+        WidgetPrefs.setTheme(this, appWidgetId, theme)
+        highlightSelectedTheme(theme)
+        pushWidgetUpdate()
+    }
+
+    private fun highlightSelectedTheme(selected: WidgetTheme) {
+        themeButtons.forEach { (theme, btn) ->
+            btn.setBackgroundColor(if (theme == selected) THEME_BTN_SELECTED_BG else THEME_BTN_UNSELECTED_BG)
+        }
+    }
+
+    /** Pushes a fresh [WeatherWidgetProvider.buildRemoteViews] update to this widget
+     * instance right away — same fire-and-forget background pattern [selectCity]
+     * already uses — so a theme/transparency change is visible immediately without
+     * needing to leave this screen. */
+    private fun pushWidgetUpdate() {
+        bgExecutor.execute {
+            try {
+                val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
+                val rv = WeatherWidgetProvider.buildRemoteViews(applicationContext, appWidgetId)
+                appWidgetManager.updateAppWidget(appWidgetId, rv)
+            } catch (e: Exception) {
+                // widget will retry on the next periodic/manual refresh
+            }
+        }
+    }
+
+    private fun finishAfterSelection(isLive: Boolean) {
+        val message = if (isLive) {
+            "Widget will follow your current location"
+        } else {
+            "Widget city set to saved location"
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
         if (intent?.action == AppWidgetManager.ACTION_APPWIDGET_CONFIGURE) {
             val resultValue = android.content.Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             setResult(RESULT_OK, resultValue)
@@ -277,5 +359,8 @@ class WidgetConfigureActivity : Activity() {
     companion object {
         private const val LOCATION_PERMISSION_REQUEST = 4201
         private const val NOTIFICATION_PERMISSION_REQUEST = 4202
+
+        private const val THEME_BTN_UNSELECTED_BG = 0xFF0A0F0A.toInt()
+        private const val THEME_BTN_SELECTED_BG = 0xFF1A3A1A.toInt()
     }
 }
