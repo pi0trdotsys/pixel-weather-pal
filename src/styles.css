@@ -63,6 +63,14 @@
   --amber: #ffb000;
   --crimson: #ff5555;
   --cyan: #55ffff;
+  /* HUD / "Terminal 2.0" widget accent tokens — mockup-only (see docs/widget-spec.md) */
+  --hud-cyan: #55ffff;
+  --hud-cyan-dim: #2a6666;
+  --hud-grid: rgba(85, 255, 255, 0.10);
+  --hud-glow: rgba(85, 255, 255, 0.45);
+  --hud-line: rgba(85, 255, 255, 0.35);
+  --hud-scan: rgba(85, 255, 255, 0.06);
+  --hud-magenta: #ff4fd8;
 }
 
 .dark {
@@ -242,4 +250,48 @@
   box-shadow:
     inset 0 0 24px rgba(51, 255, 102, 0.06),
     0 0 0 1px rgba(51, 255, 102, 0.05);
+}
+
+/* Widget mockup "Terminal 2.0" HUD grid backdrop (subtle cyan blueprint grid). */
+.hud-grid {
+  background-image:
+    linear-gradient(to right, var(--hud-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--hud-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 100%);
+}
+
+/* Sweep: a soft cyan highlight that scans across the widget. */
+.widget-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.widget-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    var(--hud-scan) 45%,
+    var(--hud-glow) 50%,
+    var(--hud-scan) 55%,
+    transparent 65%
+  );
+  background-size: 250% 100%;
+  animation: widget-sweep 5s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+.widget-sweep--fast::after {
+  animation-duration: 1.4s;
+}
+@keyframes widget-sweep {
+  0% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
 }

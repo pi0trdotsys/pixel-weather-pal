@@ -170,6 +170,9 @@ function Index() {
           <Link to="/about" className="hover:text-[color:var(--phosphor)]">
             ./about
           </Link>
+          <Link to="/mockups" className="hover:text-[color:var(--phosphor)]">
+            ./mockups
+          </Link>
         </nav>
       </header>
 
