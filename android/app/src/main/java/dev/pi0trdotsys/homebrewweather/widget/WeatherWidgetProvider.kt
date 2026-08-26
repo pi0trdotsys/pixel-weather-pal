@@ -156,6 +156,19 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
         /** Kicks off a background fetch + RemoteViews push for a single widget instance. */
         fun refreshWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+            // Quick "refreshing…" feedback (cheap partial update, no network) before
+            // the background fetch completes — matches the web mockup's refreshing state.
+            try {
+                val spinner = RemoteViews(context.packageName, R.layout.weather_widget)
+                spinner.setViewVisibility(R.id.widget_refresh_spinner, View.VISIBLE)
+                spinner.setViewVisibility(R.id.widget_status_banner, View.VISIBLE)
+                spinner.setTextViewText(R.id.widget_status_banner, "⟳ refreshing…")
+                spinner.setTextColor(R.id.widget_status_banner, context.getColor(R.color.widget_cyan))
+                appWidgetManager.partiallyUpdateAppWidget(appWidgetId, spinner)
+            } catch (e: Exception) {
+                // best-effort; the full render below still runs regardless
+            }
+
             bgExecutor.execute {
                 try {
                     val rv = buildRemoteViews(context, appWidgetId)
@@ -371,6 +384,37 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             }
         }
 
+        /** Short Polish condition label for the Terminal 2.0 hero's "now" line. */
+        private fun kindLabel(kind: String): String = when (kind) {
+            "sun" -> "słonecznie"
+            "partly" -> "częściowo"
+            "cloud" -> "pochmurno"
+            "fog" -> "mgła"
+            "rain" -> "deszcz"
+            "snow" -> "śnieg"
+            "thunder" -> "burza"
+            "moon" -> "noc"
+            else -> kind
+        }
+
+        /** 4-day POP trend as Unicode block chars (Terminal 2.0 sparkline). */
+        private fun popSparkline(weather: WeatherApi.WeatherData): String {
+            val pops = weather.daily.map { it.precipitationProbabilityMax }
+            val max = pops.maxOrNull() ?: 0
+            if (max <= 0) return ""
+            val chars = charArrayOf('▁', '▂', '▃', '▄', '▅', '▆', '▇', '█')
+            return pops.joinToString(" ") { p ->
+                val idx = ((p.toFloat() / max) * (chars.size - 1)).roundToInt().coerceIn(0, chars.size - 1)
+                chars[idx].toString()
+            }
+        }
+
+        /** Sparkline appended to the footer comment, so it needs no extra row. */
+        private fun sparklineFooterComment(weather: WeatherApi.WeatherData): String {
+            val spark = popSparkline(weather)
+            return if (spark.isBlank()) "// sigma.forecast()" else "// sigma.forecast()  $spark"
+        }
+
         private fun tempSpannable(context: Context, dayMax: Double, nightMin: Double): SpannableString {
             val text = "${Math.round(dayMax)}° / ${Math.round(nightMin)}°"
             val span = SpannableString(text)
@@ -510,6 +554,8 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 rv.setTextViewText(R.id.widget_footer_comment, "// sigma.forecast()")
                 rv.setTextViewText(R.id.widget_footer_joke, "> tap [city] to configure")
                 rv.setViewVisibility(R.id.widget_aqi_line, View.GONE)
+                rv.setViewVisibility(R.id.widget_refresh_spinner, View.GONE)
+                rv.setViewVisibility(R.id.widget_status_banner, View.GONE)
                 return rv
             }
 
@@ -537,8 +583,29 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             if (weather == null) {
                 rv.setTextViewText(R.id.widget_footer_joke, "> offline — no cached data yet")
                 rv.setViewVisibility(R.id.widget_aqi_line, View.GONE)
+                rv.setViewVisibility(R.id.widget_refresh_spinner, View.GONE)
+                rv.setTextViewText(R.id.widget_status_banner, "offline · no cached data yet")
+                rv.setTextColor(R.id.widget_status_banner, context.getColor(R.color.widget_offline))
+                rv.setViewVisibility(R.id.widget_status_banner, View.VISIBLE)
                 return rv
             }
+
+            // Terminal 2.0 status banner + dimming: stale vs offline-cache vs fresh.
+            val dimmed = !online || !isFresh
+            when {
+                !online -> {
+                    rv.setTextViewText(R.id.widget_status_banner, "offline · serving cached snapshot")
+                    rv.setTextColor(R.id.widget_status_banner, context.getColor(R.color.widget_offline))
+                    rv.setViewVisibility(R.id.widget_status_banner, View.VISIBLE)
+                }
+                !isFresh -> {
+                    rv.setTextViewText(R.id.widget_status_banner, "stale · retrying")
+                    rv.setTextColor(R.id.widget_status_banner, context.getColor(R.color.widget_amber))
+                    rv.setViewVisibility(R.id.widget_status_banner, View.VISIBLE)
+                }
+                else -> rv.setViewVisibility(R.id.widget_status_banner, View.GONE)
+            }
+            rv.setViewVisibility(R.id.widget_refresh_spinner, View.GONE)
 
             // Notifications are evaluated only against a genuinely fresh fetch (never a
             // stale offline-fallback cache) and are entirely best-effort — a notification
@@ -606,24 +673,33 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             if (compactHeight) {
                 rv.setViewVisibility(R.id.widget_meta_line, View.GONE)
                 rv.setViewVisibility(R.id.widget_footer_comment, View.GONE)
+                rv.setViewVisibility(R.id.widget_status_banner, View.GONE)
             } else {
                 rv.setTextViewText(R.id.widget_meta_line, metaLine(weather))
                 rv.setViewVisibility(R.id.widget_meta_line, View.VISIBLE)
+                rv.setTextViewText(R.id.widget_footer_comment, sparklineFooterComment(weather))
                 rv.setViewVisibility(R.id.widget_footer_comment, View.VISIBLE)
             }
 
-            // "Right now" line: current temp + current chance of rain — distinct
-            // from the 4-day grid above (today's daily max/min and daily-max PoP).
-            // Computed here (rather than further down where the footer joke also
-            // needs kind/isNight) so the small pixel-art icon next to this line
-            // can reuse the same kind/frame the joke and day-grid icons use.
+            // Terminal 2.0 hero: big current temp + condition + rain + AQI.
+            // kind0/isNight computed here (rather than further down where the footer
+            // joke also needs kind/isNight) so the pixel icon can reuse the same
+            // kind/frame the joke and day-grid icons use.
             val kind0 = Wmo.wmoToKind(weather.currentWeatherCode)
             val isNight = !weather.isDay
             val nowIconKind = if (isNight && (kind0 == "sun" || kind0 == "partly")) "moon" else kind0
             rv.setImageViewBitmap(R.id.widget_now_icon, PixelIcons.render(nowIconKind, dpToPx(context, NOW_ICON_DP), frame))
 
-            val nowParts = mutableListOf<String>()
-            if (!weather.currentTemperature.isNaN()) nowParts += "now: ${Math.round(weather.currentTemperature)}°"
+            rv.setTextViewText(
+                R.id.widget_hero_temp,
+                if (weather.currentTemperature.isNaN()) "--°" else "${Math.round(weather.currentTemperature)}°",
+            )
+            rv.setTextColor(
+                R.id.widget_hero_temp,
+                context.getColor(if (dimmed) R.color.widget_cyan_dim else R.color.widget_cyan),
+            )
+
+            val nowParts = mutableListOf("now · ${kindLabel(nowIconKind)}")
             if (weather.currentPrecipitationProbability >= 0) nowParts += "rain ${weather.currentPrecipitationProbability}%"
             rv.setTextViewText(R.id.widget_now_line, nowParts.joinToString(" · "))
 

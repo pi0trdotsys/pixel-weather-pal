@@ -60,6 +60,14 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_widget_city" />
 
+            <ProgressBar
+                android:id="@+id/widget_refresh_spinner"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:indeterminateTint="@color/widget_cyan"
+                android:visibility="gone" />
+
             <ImageButton
                 android:id="@+id/widget_refresh_btn"
                 android:layout_width="22dp"
@@ -70,10 +78,19 @@
                 android:src="@drawable/ic_widget_refresh" />
         </LinearLayout>
 
-        <!-- "right now" row: small pixel-art current-conditions icon + current
-             temp + current chance of rain (distinct from the 4-day grid's
-             daily max/min and daily-max PoP below), plus a best-effort AQI
-             reading when available. -->
+        <!-- Terminal 2.0 status banner (stale / offline / refreshing) — gone by default. -->
+        <TextView
+            android:id="@+id/widget_status_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="1dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:singleLine="true"
+            android:textSize="9sp"
+            android:visibility="gone" />
+
+        <!-- Terminal 2.0 hero: big current temp + pixel icon + condition/rain + AQI. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -85,13 +102,27 @@
                 android:id="@+id/widget_now_icon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="3dp" />
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:id="@+id/widget_hero_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_cyan"
+                android:shadowColor="@color/widget_hud_glow"
+                android:shadowRadius="6"
+                android:shadowDx="0"
+                android:shadowDy="0" />
 
             <TextView
                 android:id="@+id/widget_now_line"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="4dp"
                 android:ellipsize="end"
                 android:singleLine="true"
                 android:textColor="@color/widget_green"
@@ -109,20 +140,11 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Subtle 1dp hairline between the "right now" line and the 4-day
-             grid — purely decorative section separator, theme-agnostic
-             (translucent white reads fine over every WidgetTheme x
-             WidgetTransparency combination) so it needs no per-theme retint
-             logic. A plain TextView rather than android.view.View: RemoteViews
-             only inflates from its own view allow-list (no bare View).
-             Height-budget-neutral vs. the pre-polish layout: the row above's
-             marginBottom dropped from 2dp to 1dp to exactly offset this
-             view's 1dp height, so total footprint (and therefore the
-             140dp-tall compact layout's fit) is unchanged. -->
+        <!-- 1dp hairline between the hero and the 4-day grid (Terminal 2.0 cyan). -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#26FFFFFF" />
+            android:background="@color/widget_hud_line" />
 
         <!-- 4-day body grid -->
         <LinearLayout

@@ -28,4 +28,10 @@
     <color name="widget_aqi_unhealthy">#ff3b3b</color>
     <color name="widget_aqi_very_unhealthy">#a64dff</color>
     <color name="widget_aqi_hazardous">#7f0000</color>
+
+    <!-- Terminal 2.0 HUD accents (mockup → native; see docs/widget-spec.md).
+         widget_hud_glow = cyan at ~45% alpha for the hero temp's text shadow;
+         widget_hud_line = cyan at ~35% alpha for the hero separator. -->
+    <color name="widget_hud_glow">#7355FFFF</color>
+    <color name="widget_hud_line">#5955FFFF</color>
 </resources>
