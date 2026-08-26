@@ -1,65 +1,59 @@
-## Cel
+# Redesign widgetu 4×2 — "Terminal 2.0"
 
-Instalowalna aplikacja pogodowa (PWA) w estetyce homebrew / zielony terminal CRT. Wszystkie ikony pogodowe jako pixel-art, żarty programistyczne w interfejsie i na "widgecie" (dużym kafelku dashboardowym).
+Cel: nowa, bardziej czytelna i „hyper future tech" makieta widgetu Androida 4×2, dostarczona jako klikalne makiety w TypeScripcie + tokeny + spec dla Claude'a, który zaimplementuje to w RemoteViews.
 
-## Stack i integracje
+## Kierunek wizualny
 
-- TanStack Start + Tailwind v4 (istniejąca baza).
-- **Open-Meteo API** (bez klucza, bez backendu, bez Lovable Cloud) — geokodowanie i pogoda przez `fetch` z klienta.
-- **Geolokalizacja przeglądarki** (`navigator.geolocation`) z fallbackiem na wyszukiwarkę miasta (Open-Meteo geocoding).
-- PWA: manifest + ikony, `display: standalone`, motyw kolorystyczny zielony/czarny. Bez service workera (zgodnie ze skillem PWA — użytkownik prosi tylko o "widget na ekran główny", nie o offline).
+Zostaje fosforowa zieleń jako baza, dochodzi warstwa HUD:
 
-## Wygląd (design system)
+- Baza: `#000` → `#060d06` pionowy gradient tła, ramka 1px `#1f8a3f` z jaśniejszym narożnikowym akcentem (corner brackets `⌐ ¬ ∟ ⌐`).
+- Akcent zimny: cyan `#55ffff` dla danych „live" (temperatura teraz, pasek POP), bursztyn `#ffb000` dla ostrzeżeń/stale, czerwień `#ff5555` dla offline.
+- Micro-grid: subtelna siatka kropek 4dp w tle (drawable), daje wrażenie HUD-u bez szumu.
+- Typografia: monospace, wyraźna hierarchia — temp dnia 22sp bold, noc 12sp dim, etykiety dni 9sp uppercase z trackingiem.
+- Czytelność: wyraźniejszy kontrast dim-textu (`#3f8f55` zamiast obecnego ciemnego zielonego), większe odstępy między kolumnami, separatory hairline zamiast pełnych ramek.
 
-- Paleta: tło `#000000` / `#0a0f0a`, tekst `#33ff66` (fosfor), akcent bursztynowy `#ffb000` na ostrzeżenia, czerwony `#ff5555` na błędy. Efekt CRT: subtelne scanline'y (CSS `repeating-linear-gradient`), lekki glow (text-shadow), migający kursor `_`.
-- Typografia: monospace pixel — `VT323` do nagłówków, `JetBrains Mono` do body (ładowane przez `<link>` w `__root.tsx`, nie `@import`).
-- Ikony pogodowe: **własny komponent `<PixelIcon kind="sun|cloud|rain|snow|thunder|fog|partly" />`** rysowany siatką `div`-ów (16×16, `image-rendering: pixelated`) — bez zewnętrznych assetów, koloryzowany semantycznym tokenem, ostry pixel look bez rozmycia.
+## Nowy układ 4×2
 
-## Struktura tras
-
+```text
+┌ HBW ─ Warszawa ──────────── ● sync 22:04  [⟳] ┐
+│  ▓▓ 24°  clear sky            feels 25°       │
+│  ────────────────────────────────────────────  │
+│  DZIŚ    ŚR      CZW     PT                    │
+│  [ico]   [ico]   [ico]   [ico]                 │
+│  24°/12° 21°/11° 18°/9°  16°/8°                │
+│  ▁▃▅ 10% ▁▁▁ 0%  ▅▇▇ 70% ▃▅▅ 45%              │
+│  "kod się sam nie napisze, ruszaj się"         │
+└────────────────────────────────────────────────┘
 ```
-src/routes/
-  __root.tsx          — head: fonty, manifest, theme-color; CRT overlay
-  index.tsx           — dashboard: WidgetPreview + Now + Today + Hourly24 + Daily7 + TerminalOutput
-  about.tsx           — o aplikacji + credits Open-Meteo
-```
 
-Jedna strona wystarcza dla MVP. `index.tsx` zastępuje placeholder.
+Zmiany względem obecnego: pasek „hero" z aktualną temperaturą (dziś dubluje się z kolumną), POP jako mini słupek + %, sigma-komentarz w osobnej strefie z ciemniejszym tłem, ikona refresh w prawym górnym rogu z kropką stanu połączenia.
 
-## Komponenty
+## Efekty / smaczki (wykonalne w RemoteViews)
 
-- `WeatherWidget` — duży kafelek 2×2 imitujący widget iOS/Android: pixel ikona, temperatura wielkim VT323, miasto, jeden losowy żart programistyczny pasujący do pogody ("It's raining. Perfect time to `git blame`.").
-- `NowPanel` — temp odczuwalna, wiatr, wilgotność, ciśnienie — jako "system stats".
-- `HourlyStrip` — 24h scroll poziomy, mini-ikonki + temp.
-- `DailyForecast` — 7 dni jako tabela terminalowa (`| Mon | ☀ | 22° | 14° |`).
-- `TerminalOutput` — sekcja stylizowana jak `$ weather --today`: ASCII-art ikona (duża) + prognoza wypisana linia po linii z "typewriter" animacją, prompt `user@homebrew-weather:~$`.
-- `LocationBar` — przycisk `[locate]` + input `> search city_`.
-- `JokeTicker` — losowy żart u dołu (`// TODO: fix the weather`).
+- „Scanline sweep" — statyczny gradient drawable u góry kafla imitujący przebieg promienia.
+- Corner brackets + hairline separatory zamiast pełnej ramki.
+- Kropka stanu: pulsująca imitacja przez naprzemienne drawables przy każdym tick BlinkAlarm (już istnieje).
+- Kursor `_` mrugający (istniejący mechanizm) przeniesiony na koniec nazwy miasta.
+- Stan „refreshing": ikona ⟳ zamieniana na klatkę `◜◝◞◟` przy każdej aktualizacji (bez prawdziwej animacji — RemoteViews jej nie ma).
+- Wersja glass/glow tylko na poziomie makiety web (blur, animacje) — spec jasno rozdziela „web-only" od „android-safe".
 
-## Dane (żarty)
+## Dostawa
 
-Lokalny plik `src/lib/dev-jokes.ts` — ~40 żartów pogrupowanych po `condition` (sunny/rain/snow/cloud/thunder/fog/night). Widget i TerminalOutput losują z puli pasującej do aktualnej pogody.
-
-## PWA (manifest-only)
-
-- `public/manifest.webmanifest`: `name: "Homebrew Weather"`, `short_name: "brew-wx"`, `theme_color: "#0a0f0a"`, `background_color: "#000000"`, `display: "standalone"`, ikony 192/512 (pixel-art słońce+chmura na czarnym tle, generowane przez imagegen).
-- `<link rel="manifest">`, `<meta name="theme-color">`, `apple-touch-icon` w `__root.tsx` head.
-- Brak service workera, brak rejestracji — zgodnie z regułami preview safety.
-
-## SEO / head
-
-- `__root.tsx`: title "Homebrew Weather — Pixel-art forecast for devs", opis + og:title/og:description/og:type/twitter:card. Brak og:image na root.
-- `index.tsx` head: og:image = wygenerowany hero (pixel-art scena pogodowa), plus twitter:image ten sam URL.
+1. `src/lib/widget-tokens.ts` — kolory, rozmiary tekstu, spacing, mapowanie POP→słupek, warianty stanu (ok / stale / offline / refreshing). Jedno źródło prawdy, eksportowane typy.
+2. `src/components/mockups/WidgetMock4x2.tsx` — komponent renderujący makietę widgetu na fake danych, pixel-perfect proporcje 4×2 (~330×155dp).
+3. `src/components/mockups/WidgetStates.tsx` — te same makiety w stanach: online, stale, offline, loading, brak lokalizacji.
+4. `src/routes/mockups.tsx` — trasa `/mockups`: podgląd na tle „ekranu głównego", przełącznik stanów i przełącznik przezroczystości tła (35/60/85/100 — jak istniejące `widget_background_*`).
+5. `docs/widget-spec.md` — dokumentacja dla Claude'a: mapa element → `@+id/...` w `weather_widget.xml`, tabela tokenów → `widget_colors.xml`, lista drawables do dodania, ograniczenia RemoteViews, checklista implementacji.
 
 ## Techniczne detale
 
-- Fetch pogody przez `useQuery` z `queryKey: ["weather", lat, lon]`, ensureQueryData w loaderze `index` po ustaleniu koordów (koordy pochodzą z klienta → loader tylko dla wyszukiwania miasta ze search params `?lat&lon&name`).
-- Fallback gdy brak koordów: prompt `> allow location or type city_`.
-- Mapowanie WMO weather codes → nasze `kind` w `src/lib/wmo.ts`.
-- CRT scanlines: warstwa `fixed inset-0 pointer-events-none` z `mix-blend-mode`.
+- Makiety są czystym frontendem na danych statycznych — nie ruszają `weather-api.ts`, cache'u ani logiki odświeżania.
+- Tokeny w TS trzymają wartości hex 1:1 z tym, co trafi do `res/values/widget_colors.xml`, żeby nie było rozjazdu.
+- Trasa `/mockups` dostaje własny `head()` z tytułem/opisem, `robots: noindex`.
+- Nowe kolory dodaję do `src/styles.css` jako tokeny (`--hud-cyan` itd.) — bez hardkodowanych klas kolorów w komponentach.
+- Nic w `android/` nie jest zmieniane w tym kroku — to dostarcza dopiero implementacja wg spec.
 
-## Zakres poza MVP (świadomie pomijam)
+## Poza zakresem
 
-- Prawdziwy natywny widget systemowy — Lovable buduje web; PWA + duży kafelek to najbliżej.
-- Zapisane miasta, ulubione, historia — nie było wymagane.
-- Ostrzeżenia pogodowe, radar, mapy — poza zakresem.
+- Sama implementacja w Kotlinie/XML (to robi Claude wg spec).
+- Redesign strony głównej aplikacji web — osobny krok, jeśli zechcesz.
