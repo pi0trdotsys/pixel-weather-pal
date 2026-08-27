@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Opaque (~100%) fill variant of widget_background — see WidgetTheme.kt's
      WidgetTransparency for how this is picked per-widget-instance. Border/
-     shape geometry is identical across all widget_background_* variants;
-     only the fill's alpha channel differs. Pixel-identical to the original
-     widget_background.xml, which stays the layout XML's static default. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#FF0A0F0A" />
-    <stroke android:width="1dp" android:color="@color/widget_green_dim" />
-    <corners android:radius="3dp" />
-</shape>
+     shape geometry (and the HUD grid texture layer) is identical across all
+     widget_background_* variants; only the fill's alpha channel differs. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF0A0F0A" />
+            <stroke android:width="1dp" android:color="@color/widget_green_dim" />
+            <corners android:radius="5dp" />
+        </shape>
+    </item>
+    <item>
+        <bitmap
+            android:src="@drawable/widget_hud_grid_tile"
+            android:tileMode="repeat" />
+    </item>
+</layer-list>

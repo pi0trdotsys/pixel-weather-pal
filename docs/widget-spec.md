@@ -129,31 +129,88 @@ kolory (istniejące zostają; dopisz tylko brakujące):
 
 ## 6. Checklista implementacyjna
 
-- [ ] Dodać nowe kolory do `widget_colors.xml` (hud_grid/glow/line/scan/magenta).
-- [ ] Dodać drawable: `widget_background_hud`, `widget_hud_grid` (+ ew. 4 narożniki).
-- [ ] Layout: dodać `widget_hero_temp`, `widget_sparkline`, `widget_status_banner`;
-      przeorganizować sekcję „right now" w hero (duża temp + sparkline), zachowując
-      istniejące `@+id` i kompaktowe progi (compactHeight/compactWidth).
-- [ ] `buildRemoteViews()`: zasilić hero temp, sparkline (mapowanie POP→znaki),
-      status banner (stale/offline/refreshing), glow hero.
-- [ ] Stan `refreshing`: pokazać `ProgressBar`/`level-list` na ikonie refresh.
-- [ ] Stan `offline`: banner „offline · serving cached snapshot" + dim danych
-      (obniż kontrast/alfa tekstów gridu — NIE `setViewAlpha` na root).
-- [ ] Stan `stale`: banner „stale · retrying" (amber).
-- [ ] Stan `no-location`: header `set city`, hero → „tap [city] to configure".
-- [ ] 4×2: `weather_widget_info.xml` → `targetCellHeight="2"`, `minHeight="110dp"`
-      (teraz jest `3`/`180dp`). Zweryfikuj, czy hero + grid + sigma mieszczą się;
-      jeśli nie — utrzymaj 4×3 i traktuj makietę jako gęstszy wariant.
-- [ ] Zsynchronizować `widget_colors.xml` z `src/lib/widget-tokens.ts` (hex 1:1).
-- [ ] `gradlew assembleDebug` + `lint` przechodzi; widget renderuje się w
-      `WidgetPreviewDebugActivity` bez przycinania.
+- [x] Dodać nowe kolory do `widget_colors.xml` (`widget_hud_grid`, 10% cyan —
+      `hudGlow`/`hudLine` już istniały i zostały ponownie użyte 1:1; `hudScan`/
+      `hudMagenta` pominięte — nieużywane natywnie, magenta to tylko debug-guide
+      overlay w mockupie webowym).
+- [x] Dodać drawable: `widget_hud_grid_tile.png` (16×16 mdpi, tile'owany przez
+      `android:tileMode="repeat"`) + warstwa w `widget_background*.xml`
+      (layer-list: shape 5dp-radius fill/stroke + bitmap grid), `widget_grid_divider*`
+      (1×8dp dashed-tile dla hairline między kolumnami gridu), `widget_refresh_hitbox`
+      (bordered 12dp hit-box), `widget_status_banner_bg` (bordered chip).
+      4 narożne nawiasy — **pominięte** (nice-to-have per §5; rounded-rect border
+      bez brackets, żeby nie ryzykować budżetu wierszy/czasu).
+- [x] Layout: `widget_hero_temp`, `widget_sparkline` (zrealokowany z
+      `popSparkline()`, który wcześniej trafiał do stopki), `widget_status_banner`
+      już istniały z wcześniejszego przejścia; dodano `widget_hero_unit` ("C"),
+      `widget_pop_max` ("▽ max%"), `widget_sync_line` ("sync HH:MM:SS"). Sekcja
+      hero przeorganizowana (duża temp + sparkline po prawej), stare `@+id`
+      zachowane. **Layout rozdzielony na dwa pliki**: `weather_widget.xml`
+      (domyślny, prawdziwe 4×2, wiersze o stałej wysokości dp) i
+      `weather_widget_compact.xml` (nowy, wrap_content, dla `compactHeight`) —
+      RemoteViews nie potrafi zmienić wysokości wiersza w runtime
+      (`setViewLayoutHeight` to API 31+), więc jeden plik nie mógł obsłużyć
+      obu skrajnych rozmiarów.
+- [x] `buildRemoteViews()`: hero temp, sparkline (mapowanie POP→znaki, teraz
+      pisany bezpośrednio do `widget_sparkline` zamiast do komentarza stopki),
+      status banner (stale/offline/refreshing), glow hero (już istniał).
+- [x] Stan `refreshing`: `ProgressBar` (już istniał) nad `widget_refresh_btn`
+      w 12dp hit-boxie.
+- [x] Stan `offline`: banner „offline · serving cached snapshot" (już istniał).
+- [x] Stan `stale`: banner „stale · retrying" (już istniał).
+- [x] Stan `no-location`: header `set city` (już istniał).
+- [x] 4×2: `weather_widget_info.xml` → `targetCellHeight="2"`, `minHeight="110dp"`.
+      Zmierzone i **mieści się** — patrz §7 dla dokładnych liczb i jedynej
+      świadomej odchyłki od tokenów (hero 28→32dp).
+- [x] Zsynchronizować `widget_colors.xml` z `src/lib/widget-tokens.ts` (hex 1:1;
+      `widget_hud_grid` dodany, reszta już była zsynchronizowana).
+- [x] `gradlew assembleDebug` przechodzi; widget zweryfikowany na realnym
+      emulatorze (Pixel_10_Pro) przez `WidgetPreviewDebugActivity` w 3
+      wariantach — 250×110dp (default), 180×90dp (minResize), i 250×110dp z
+      bannerem ukrytym ("ok" state) — zero przycinania/nakładania się w
+      żadnym z nich. `lint` nie był uruchamiany osobno (poza zakresem zadania).
+- [x] Sweep animation (`.widget-sweep`) — **pominięta całkowicie** (ani statyczny
+      gradient, ani level-list scan) — jawnie dozwolone przez §5 opcję (a)/(b)
+      jako "nice to have"; priorytet poszedł w budżet wierszy i real-device fit.
+- [x] Radial mask na siatce HUD — **pominięty**, cała siatka jest subtelna i
+      nieukryta (dozwolone uproszczenie per §3.1).
 
 ## 7. Wymiary
 
-- 4×2 = **250×110dp** (cell 70dp, padding -30dp). Makieta webowa = 2.4× (600×264px),
-  więc wszystkie `TYPE_SCALE` px dzielisz przez 2.4 → sp (np. hero 44px ≈ 18sp).
-- Obecny widget deklaruje 4×3 (`targetCellHeight=3`, `minHeight=180dp`). Decyzja:
-  albo celuj w prawdziwe 4×2 (ryzyko ściśnięcia hero+grid+sigma), albo zostań przy
-  4×3 i użyj makiet tylko jako wzorca wizualnego.
+**ROZSTRZYGNIĘTE (2026-08-27): cel to prawdziwe 4×2 = 250×110dp.** `src/lib/widget-tokens.ts`
+(`ROWS`, `GRID_ROWS`, `LAYOUT`, `SP_SCALE`, `METRICS`) to jedyne źródło prawdy dla
+dp/sp budżetu — są autorskie w dp/sp (native truth), mockup web tylko je skaluje ×2.4 do
+podglądu. `fitReport()` w tym pliku dowodzi, że budżet się mieści (98dp użyte / 100dp
+dostępne po paddingu, licząc `rule` jako osobną pozycję).
+
+Grid = 4 kolumny × (`label 9 + icon 13 + temp 10 + pop 8` = 40dp). Ikony w gridzie są
+**13dp** (nie 32dp) — znacznie gęstsze niż poprzednia implementacja 4×3; hero icon = **22dp**.
+`weather_widget_info.xml` → `targetCellHeight="2"`, `minHeight="110dp"`, `minResizeWidth="180dp"`,
+`minResizeHeight="90dp"` (poprzednio `3`/`180dp` / `180dp`/`140dp`).
+
+**Zaimplementowana (native) odchyłka od tokenów, po weryfikacji na realnym emulatorze:**
+`res/layout/weather_widget.xml` (domyślny 250×110dp) używa
+`header 12 · gapA 1 · hero 32 · gapB 2 [1dp rule w środku] · grid 40 · gapC 1 · footer 11`
+= **99dp** (token: 98dp) — hero urósł 28→32dp, gapA i gapC oddały po 1dp. Powód: CSS
+`line-height: 1` (założenie web mockupu) nie ma prawdziwego odpowiednika w Androidzie —
+nawet z `includeFontPadding="false"`, wysokość linii `TextView` to wciąż realny
+ascent+descent czcionki, wyraźnie większy niż nominalny rozmiar `sp`. Przy dosłownym
+28dp `widget_now_line` (linia warunków pod dużą temperaturą 22sp) była całkowicie
+przycinana przez stały wiersz — potwierdzone wizualnie na Pixel_10_Pro (AVD) i
+naprawione przez ten +4dp. 99dp mieści się w 100dp dostępnych (1dp zapasu).
+
+Druga poprawka z real-device: `widget_aqi_line` musi mieć `android:maxWidth` (64dp) —
+bez niego najdłuższa etykieta kategorii AQI ("unhealthy (sensitive)", patrz
+`WidgetPreviewDebugActivity`'s celowo najgorszy-przypadek fake data) rozciąga się na
+pełną szerokość `wrap_content` i głoduje lewy (ważony) klaster hero rzędu z
+szerokości — Android elidesuje tekst (`ellipsize`) dopiero gdy widok jest faktycznie
+zmierzony węziej niż jego treść, więc bez `maxWidth` `ellipsize="end"` nic nie robił i
+duża temperatura była twardo obcinana (bez wielokropka) do pojedynczej cyfry.
+
+Ze względu na brak `RemoteViews.setViewLayoutHeight` przed API 31, jeden layout XML nie
+może obsłużyć zarówno 250×110dp (ścisły budżet dp) jak i 180×90dp (minResize) — stąd
+`buildRemoteViews()` wybiera między `R.layout.weather_widget` (domyślny) i nowym
+`R.layout.weather_widget_compact.xml` (wrap_content, prostszy, bez sparklinii/AQI/sync)
+na podstawie `compactHeight` (patrz `WeatherWidgetProvider.COMPACT_HEIGHT_THRESHOLD_DP`).
 
 

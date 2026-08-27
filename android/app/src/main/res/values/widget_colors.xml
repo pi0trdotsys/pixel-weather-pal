@@ -34,4 +34,9 @@
          widget_hud_line = cyan at ~35% alpha for the hero separator. -->
     <color name="widget_hud_glow">#7355FFFF</color>
     <color name="widget_hud_line">#5955FFFF</color>
+    <!-- widget_hud_grid = cyan at ~10% alpha (mirrors WIDGET_COLORS.hudGrid in
+         src/lib/widget-tokens.ts) — used both for the background HUD grid
+         texture (see widget_hud_grid_tile.png) and the 4-day grid's
+         column-divider hairlines. -->
+    <color name="widget_hud_grid">#1A55FFFF</color>
 </resources>

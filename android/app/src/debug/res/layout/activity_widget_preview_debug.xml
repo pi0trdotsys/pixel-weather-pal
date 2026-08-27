@@ -29,14 +29,14 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:fontFamily="monospace"
-            android:text="250dp x 180dp -- guaranteed minimum (minWidth/minHeight)"
+            android:text="250dp x 110dp -- guaranteed minimum, true 4x2 (minWidth/minHeight)"
             android:textColor="#33ff66"
             android:textSize="12sp" />
 
         <FrameLayout
             android:id="@+id/preview_default_container"
             android:layout_width="250dp"
-            android:layout_height="180dp"
+            android:layout_height="110dp"
             android:layout_marginTop="8dp"
             android:background="#222222" />
 
@@ -45,14 +45,30 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:fontFamily="monospace"
-            android:text="180dp x 140dp -- minimum resize (minResizeWidth/Height)"
+            android:text="180dp x 90dp -- minimum resize (minResizeWidth/Height)"
             android:textColor="#33ff66"
             android:textSize="12sp" />
 
         <FrameLayout
             android:id="@+id/preview_minresize_container"
             android:layout_width="180dp"
-            android:layout_height="140dp"
+            android:layout_height="90dp"
+            android:layout_marginTop="8dp"
+            android:background="#222222" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:fontFamily="monospace"
+            android:text="250dp x 110dp -- ok state (status banner hidden, seeded fresh)"
+            android:textColor="#33ff66"
+            android:textSize="12sp" />
+
+        <FrameLayout
+            android:id="@+id/preview_ok_container"
+            android:layout_width="250dp"
+            android:layout_height="110dp"
             android:layout_marginTop="8dp"
             android:background="#222222" />
 

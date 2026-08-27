@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1px dashed hairline between 4-day grid columns (mockup: borderLeft "1px
+     dashed hudGrid"). widget_grid_divider_tile.png is a 1x8dp tile (4px on /
+     4px off) at the same faint cyan as the HUD grid background texture,
+     tiled vertically to fill the divider View's height. -->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/widget_grid_divider_tile"
+    android:tileMode="repeat" />

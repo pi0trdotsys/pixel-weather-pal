@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Terminal 2.0 default (true 4x2 = 250x110dp) layout. Row heights below
+     START from src/lib/widget-tokens.ts's ROWS/GRID_ROWS (header 12 / gapA 2 /
+     hero 28 / gapB 2 [1dp rule nested inside it] / grid 40 [label 9 + icon 13
+     + temp 10 + pop 8] / gapC 2 / footer 11 = 97dp) but hero/gapA/gapC were
+     adjusted (28->32 / 2->1 / 2->1, net +3dp, still 99dp <= 100dp usable) after
+     real-device verification: CSS line-height:1 (the web mockup's assumption)
+     has no true Android equivalent — even with includeFontPadding="false", a
+     TextView's line height is still its font's actual ascent+descent, which
+     runs measurably taller than the nominal sp size, so the literal 28dp hero
+     token clipped the condition line beneath the 22sp hero temp. See
+     docs/widget-spec.md §7 for the full writeup of this deviation.
+     Used whenever the host has NOT granted less than the compact thresholds
+     (see WeatherWidgetProvider.COMPACT_*_THRESHOLD_DP) — the smaller/looser
+     res/layout/weather_widget_compact.xml is swapped in for that case,
+     since RemoteViews can't resize a fixed-dp row at runtime (no
+     setViewLayoutHeight pre-API 31). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -10,25 +26,35 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="6dp">
+        android:padding="5dp">
 
-        <!-- header row -->
+        <!-- row: header — 12dp -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/widget_header_label"
+            <FrameLayout
+                android:id="@+id/widget_city_btn"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:text="┌─ homebrew weather ─┐"
-                android:textColor="@color/widget_green_dim"
-                android:textSize="9sp" />
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+
+                <TextView
+                    android:id="@+id/widget_header_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center_vertical"
+                    android:ellipsize="end"
+                    android:fontFamily="monospace"
+                    android:gravity="center_vertical"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:text="┌─ homebrew weather ─┐"
+                    android:textColor="@color/widget_green_dim"
+                    android:textSize="9sp" />
+            </FrameLayout>
 
             <!-- Blinking terminal cursor, toggled VISIBLE/GONE roughly once a
                  minute by BlinkAlarm/WeatherWidgetProvider — see BlinkAlarm.kt
@@ -37,120 +63,209 @@
                 android:id="@+id/widget_cursor"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
+                android:layout_marginEnd="3dp"
                 android:fontFamily="monospace"
+                android:includeFontPadding="false"
                 android:text="_"
                 android:textColor="@color/widget_green"
-                android:textSize="10sp"
+                android:textSize="9sp"
                 android:textStyle="bold" />
 
             <ImageView
                 android:id="@+id/widget_online_dot"
-                android:layout_width="7dp"
-                android:layout_height="7dp"
-                android:layout_marginEnd="4dp"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginEnd="3dp"
                 android:src="@drawable/widget_dot_online" />
 
-            <ImageButton
-                android:id="@+id/widget_city_btn"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:background="@android:color/transparent"
-                android:padding="3dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_widget_city" />
+            <!-- 12dp (LAYOUT.refreshHitDp) bordered hit-box; the spinner
+                 overlays the icon in-place while a refresh is in flight. -->
+            <FrameLayout
+                android:layout_width="12dp"
+                android:layout_height="12dp">
 
-            <ProgressBar
-                android:id="@+id/widget_refresh_spinner"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:indeterminateTint="@color/widget_cyan"
-                android:visibility="gone" />
+                <ImageButton
+                    android:id="@+id/widget_refresh_btn"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/widget_refresh_hitbox"
+                    android:padding="2dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_widget_refresh" />
 
-            <ImageButton
-                android:id="@+id/widget_refresh_btn"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:background="@android:color/transparent"
-                android:padding="3dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_widget_refresh" />
+                <ProgressBar
+                    android:id="@+id/widget_refresh_spinner"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_gravity="center"
+                    android:indeterminateTint="@color/widget_cyan"
+                    android:visibility="gone" />
+            </FrameLayout>
         </LinearLayout>
 
-        <!-- Terminal 2.0 status banner (stale / offline / refreshing) — gone by default. -->
-        <TextView
-            android:id="@+id/widget_status_banner"
+        <!-- row: gapA — 1dp (token: 2dp; -1dp lent to hero, see file header) -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="1dp"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:singleLine="true"
-            android:textSize="9sp"
-            android:visibility="gone" />
+            android:layout_height="1dp" />
 
-        <!-- Terminal 2.0 hero: big current temp + pixel icon + condition/rain + AQI. -->
+        <!-- row: hero — 32dp (token: 28dp; +4dp for real Android font metrics,
+             see file header comment) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="1dp"
+            android:layout_height="32dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <ImageView
-                android:id="@+id/widget_now_icon"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp" />
-
-            <TextView
-                android:id="@+id/widget_hero_temp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="@color/widget_cyan"
-                android:shadowColor="@color/widget_hud_glow"
-                android:shadowRadius="6"
-                android:shadowDx="0"
-                android:shadowDy="0" />
-
-            <TextView
-                android:id="@+id/widget_now_line"
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:textColor="@color/widget_green"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/widget_aqi_line"
+                <ImageView
+                    android:id="@+id/widget_now_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="3dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/widget_hero_temp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="monospace"
+                            android:includeFontPadding="false"
+                            android:shadowColor="@color/widget_hud_glow"
+                            android:shadowDx="0"
+                            android:shadowDy="0"
+                            android:shadowRadius="6"
+                            android:textColor="@color/widget_cyan"
+                            android:textSize="22sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/widget_hero_unit"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="bottom"
+                            android:layout_marginStart="1dp"
+                            android:layout_marginBottom="2dp"
+                            android:fontFamily="monospace"
+                            android:includeFontPadding="false"
+                            android:text="C"
+                            android:textColor="@color/widget_cyan_dim"
+                            android:textSize="9sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/widget_now_line"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="monospace"
+                        android:includeFontPadding="false"
+                        android:singleLine="true"
+                        android:textColor="@color/widget_cyan_dim"
+                        android:textSize="8sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:textSize="10sp"
-                android:visibility="gone" />
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/widget_sparkline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="3dp"
+                    android:fontFamily="monospace"
+                    android:includeFontPadding="false"
+                    android:letterSpacing="0.15"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="16sp" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/widget_pop_max"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:includeFontPadding="false"
+                        android:textColor="@color/widget_cyan"
+                        android:textSize="8sp" />
+
+                    <!-- maxWidth is load-bearing, not decorative: without it a long AQI
+                         category label ("unhealthy (sensitive)", the longest one — see
+                         WidgetPreviewDebugActivity's fake data) has unconstrained
+                         wrap_content width, which starves the hero row's weighted left
+                         cluster (icon/temp/condition) of essentially all its width and
+                         hard-clips it (no ellipsis) since Android only elides text once
+                         a view is actually measured narrower than its content. -->
+                    <TextView
+                        android:id="@+id/widget_aqi_line"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:includeFontPadding="false"
+                        android:maxWidth="64dp"
+                        android:singleLine="true"
+                        android:textSize="8sp"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/widget_sync_line"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:includeFontPadding="false"
+                        android:textColor="@color/widget_cyan_dim"
+                        android:textSize="8sp" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- 1dp hairline between the hero and the 4-day grid (Terminal 2.0 cyan). -->
-        <TextView
+        <!-- row: gapB — 2dp, the 1dp hairline rule nests inside it (not an
+             additional row) so the column budget stays 97dp, not 98dp. -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/widget_hud_line" />
+            android:layout_height="2dp">
 
-        <!-- 4-day body grid -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_gravity="center_vertical"
+                android:background="@color/widget_hud_line" />
+        </FrameLayout>
+
+        <!-- row: 4-day grid — 40dp (label 9 + icon 13 + temp 10 + pop 8) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="40dp"
             android:orientation="horizontal">
 
             <LinearLayout
@@ -162,38 +277,50 @@
 
                 <TextView
                     android:id="@+id/widget_day0_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_green"
-                    android:textSize="11sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="9dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:layout_gravity="center_horizontal" />
 
                 <TextView
                     android:id="@+id/widget_temp0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textSize="13sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="10dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/widget_pop0"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_cyan"
-                    android:textSize="10sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
             </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/widget_grid_divider" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -204,38 +331,50 @@
 
                 <TextView
                     android:id="@+id/widget_day1_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_green"
-                    android:textSize="11sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="9dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:layout_gravity="center_horizontal" />
 
                 <TextView
                     android:id="@+id/widget_temp1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textSize="13sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="10dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/widget_pop1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_cyan"
-                    android:textSize="10sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
             </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/widget_grid_divider" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -246,38 +385,50 @@
 
                 <TextView
                     android:id="@+id/widget_day2_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_green"
-                    android:textSize="11sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="9dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:layout_gravity="center_horizontal" />
 
                 <TextView
                     android:id="@+id/widget_temp2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textSize="13sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="10dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/widget_pop2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_cyan"
-                    android:textSize="10sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
             </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/widget_grid_divider" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -288,70 +439,106 @@
 
                 <TextView
                     android:id="@+id/widget_day3_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_green"
-                    android:textSize="11sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="9dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_green"
+                    android:textSize="9sp" />
 
                 <ImageView
                     android:id="@+id/widget_icon3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginBottom="1dp" />
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:layout_gravity="center_horizontal" />
 
                 <TextView
                     android:id="@+id/widget_temp3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textSize="13sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="10dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/widget_pop3"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/widget_cyan"
-                    android:textSize="10sp"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
                     android:ellipsize="end"
-                    android:singleLine="true" />
+                    android:fontFamily="monospace"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/widget_cyan"
+                    android:textSize="8sp" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- current-conditions meta row: feels-like / humidity / wind — extra
-             real data now that the taller layout has room for it. -->
+        <!-- row: gapC — 1dp (token: 2dp; -1dp lent to hero, see file header) -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="1dp" />
+
+        <!-- current-conditions meta row (feels/hum/wind) — no room for it in
+             the true-4x2 row budget (it isn't part of WidgetMock4x2.tsx at
+             all); id kept for compatibility but never shown. -->
         <TextView
             android:id="@+id/widget_meta_line"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="2dp"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:textColor="@color/widget_cyan"
-            android:textSize="10sp" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
-        <!-- footer -->
+        <!-- decorative "// sigma.forecast()" comment line — dropped from the
+             true-4x2 footer budget (11dp, single line, just the joke) to
+             match WidgetMock4x2.tsx exactly; id kept for compatibility but
+             never shown (see WeatherWidgetProvider — no longer written to). -->
         <TextView
             android:id="@+id/widget_footer_comment"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:text="// sigma.forecast()"
-            android:textColor="@color/widget_green_dim"
-            android:textSize="9sp" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
+        <!-- row: footer — 11dp -->
         <TextView
             android:id="@+id/widget_footer_joke"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="11dp"
             android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:gravity="center_vertical"
+            android:includeFontPadding="false"
             android:singleLine="true"
             android:textColor="@color/widget_amber"
-            android:textSize="10sp" />
+            android:textSize="9sp" />
     </LinearLayout>
+
+    <!-- Terminal 2.0 status banner (stale / offline / refreshing) — floats
+         over the hero row instead of pushing rows down, so it never breaks
+         the row budget above. Positioned just below the header, matching
+         WidgetMock4x2.tsx's `top: dp(ROWS.header + 2)` in spirit (measured
+         from the padded content box: padDp + header + gapA = 5+12+1). -->
+    <TextView
+        android:id="@+id/widget_status_banner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/widget_status_banner_bg"
+        android:ellipsize="end"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:paddingStart="4dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="1dp"
+        android:singleLine="true"
+        android:textSize="8sp"
+        android:visibility="gone" />
 </FrameLayout>

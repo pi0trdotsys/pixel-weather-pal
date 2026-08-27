@@ -2,6 +2,7 @@ package dev.pi0trdotsys.homebrewweather.widget
 
 import android.app.Activity
 import android.os.Bundle
+import android.view.View
 import android.widget.FrameLayout
 import dev.pi0trdotsys.homebrewweather.R
 
@@ -18,8 +19,8 @@ import dev.pi0trdotsys.homebrewweather.R
  * so [WeatherWidgetProvider.buildRemoteViews] skips the live network fetch
  * and reads that cache instead, then inflates the *actual* returned
  * RemoteViews tree (via [android.widget.RemoteViews.apply]) into two
- * containers sized to exactly match the widget's guaranteed-minimum
- * (250x180dp) and minimum-resize (180x140dp) footprints declared in
+ * containers sized to exactly match the widget's guaranteed-minimum,
+ * true-4x2 (250x110dp) and minimum-resize (180x90dp) footprints declared in
  * res/xml/weather_widget_info.xml — the same real code path production
  * uses, not a hand-copied approximation.
  *
@@ -52,10 +53,23 @@ class WidgetPreviewDebugActivity : Activity() {
 
             // Now simulate the host reporting a resize down to minResizeWidth/Height.
             WidgetPrefs.setLastKnownMinWidthDp(this, FAKE_WIDGET_ID, 180)
-            WidgetPrefs.setLastKnownMinHeightDp(this, FAKE_WIDGET_ID, 140)
+            WidgetPrefs.setLastKnownMinHeightDp(this, FAKE_WIDGET_ID, 90)
             val rvMinResize = WeatherWidgetProvider.buildRemoteViews(applicationContext, FAKE_WIDGET_ID)
             val minResizeContainer = findViewById<FrameLayout>(R.id.preview_minresize_container)
             minResizeContainer.addView(rvMinResize.apply(applicationContext, minResizeContainer))
+
+            // A third default-size render with the status banner force-hidden: the
+            // banner is a real content-overlay by design (see WidgetMock4x2.tsx),
+            // so the "stale · retrying" render above deliberately covers part of
+            // the hero row — this one verifies the hero row itself (icon/temp/
+            // condition/sparkline/AQI/sync) has no *independent* clipping once
+            // that overlay is out of the way.
+            WidgetPrefs.setLastKnownMinWidthDp(this, FAKE_WIDGET_ID, WidgetPrefs.DEFAULT_MIN_WIDTH_DP)
+            WidgetPrefs.setLastKnownMinHeightDp(this, FAKE_WIDGET_ID, WidgetPrefs.DEFAULT_MIN_HEIGHT_DP)
+            val rvOk = WeatherWidgetProvider.buildRemoteViews(applicationContext, FAKE_WIDGET_ID)
+            rvOk.setViewVisibility(R.id.widget_status_banner, View.GONE)
+            val okContainer = findViewById<FrameLayout>(R.id.preview_ok_container)
+            okContainer.addView(rvOk.apply(applicationContext, okContainer))
         } finally {
             // Don't leave the process-wide debug seam flipped on beyond this screen.
             WeatherWidgetProvider.debugForceOfflineCache = false
