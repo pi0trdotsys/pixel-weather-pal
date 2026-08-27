@@ -159,9 +159,9 @@ kolory (istniejące zostają; dopisz tylko brakujące):
 - [x] Stan `offline`: banner „offline · serving cached snapshot" (już istniał).
 - [x] Stan `stale`: banner „stale · retrying" (już istniał).
 - [x] Stan `no-location`: header `set city` (już istniał).
-- [x] 4×2: `weather_widget_info.xml` → `targetCellHeight="2"`, `minHeight="110dp"`.
-      Zmierzone i **mieści się** — patrz §7 dla dokładnych liczb i jedynej
-      świadomej odchyłki od tokenów (hero 28→32dp).
+- [x] 4×2: `weather_widget_info.xml` → `targetCellHeight="2"`, `minHeight="130dp"`
+      (urosło z 110dp po realnym bugu na fizycznym urządzeniu — patrz §7).
+      Zmierzone i **mieści się**, z realnym zapasem na `font_scale` do ~1.3.
 - [x] Zsynchronizować `widget_colors.xml` z `src/lib/widget-tokens.ts` (hex 1:1;
       `widget_hud_grid` dodany, reszta już była zsynchronizowana).
 - [x] `gradlew assembleDebug` przechodzi; widget zweryfikowany na realnym
@@ -213,4 +213,31 @@ może obsłużyć zarówno 250×110dp (ścisły budżet dp) jak i 180×90dp (min
 `R.layout.weather_widget_compact.xml` (wrap_content, prostszy, bez sparklinii/AQI/sync)
 na podstawie `compactHeight` (patrz `WeatherWidgetProvider.COMPACT_HEIGHT_THRESHOLD_DP`).
 
+**REALNY BUG (2026-08-27, zgłoszony przez usera na fizycznym POCO F8 Ultra):** powyższe
+99dp/1dp-zapasu trzymało się tylko przy `font_scale=1.0` (domyślna skala tekstu
+systemu), przy jakiej był weryfikowany poprzedni przebieg na emulatorze. Realne
+urządzenie z `font_scale=1.1` (zwykłe ustawienie ułatwień dostępu "większy tekst" —
+HyperOS i inne nakładki OEM pozwalają na jeszcze więcej) powiększa realną wysokość
+linii (ascent+descent) każdego `TextView` o te ~10%, co wystarczyło by przebić ten
+1dp zapasu i nałożyć `widget_now_line` na linię/grid poniżej — dokładnie zdiagnozowane
+przez `adb shell settings get system font_scale` na podłączonym urządzeniu.
+
+Naprawa (nie kolejna łatka "dodaj parę dp", tylko realny zapas + zabezpieczenie):
+`minHeight` **110dp → 130dp** (`weather_widget_info.xml`), budżet wierszy w
+`weather_widget.xml` urósł do `header 14 · gapA 2 · hero 44 · gapB 2 · grid 44
+(label 10 + icon 13 + temp 12 + pop 9) · gapC 2 · footer 12` = 120dp na 120dp
+dostępnych — zaprojektowany z zapasem do `font_scale` ~1.3. Dodatkowo
+`widget_now_line` oraz wszystkie `widget_day{0..3}_label/temp/pop` i
+`widget_footer_joke` dostały `android:autoSizeTextType="uniform"` (z realnym,
+ograniczonym `layout_height`, nie `wrap_content` — bez tego autoSize nie ma się do
+czego kurczyć) jako zabezpieczenie: nawet skala większa niż praktycznie testowana
+kurczy tekst zamiast go nakładać. Zweryfikowane na prawdziwym POCO F8 Ultra usera
+(nie tylko emulator) — zrzut ekranu po instalacji potwierdza brak nakładania.
+
+Przy okazji naprawiono też `PixelIcons.render()`: piksele siatki ikon były cięte na
+ułamkowych granicach (`x * px` bez zaokrąglenia), co przy bardzo małych rozmiarach
+(13dp grid icon) dawało niespójne pokrycie komórek — najbardziej widoczne jako
+rozmyta "szachownica" na ikonie deszczu/śniegu (drobny wzór kropli). Naprawione przez
+zaokrąglanie każdej krawędzi komórki niezależnie (`Math.round`), nie płaski offset
++0.5f na całej siatce.
 

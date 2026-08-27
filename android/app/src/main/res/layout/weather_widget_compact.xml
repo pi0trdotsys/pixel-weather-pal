@@ -144,12 +144,23 @@
                         android:textSize="7sp" />
                 </LinearLayout>
 
+                <!-- Fixed height (rather than wrap_content) + autoSizeTextType is the
+                     same defense-in-depth applied to weather_widget.xml's now_line —
+                     see that file's header comment for why wrap_content defeats
+                     autosize entirely. This layout is otherwise deliberately
+                     wrap_content/flex throughout, but this one row is where the
+                     real-device font_scale overlap bug was actually observed. -->
                 <TextView
                     android:id="@+id/widget_now_line"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="10dp"
+                    android:autoSizeMaxTextSize="7sp"
+                    android:autoSizeMinTextSize="5sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
+                    android:gravity="center_vertical"
                     android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textColor="@color/widget_cyan_dim"

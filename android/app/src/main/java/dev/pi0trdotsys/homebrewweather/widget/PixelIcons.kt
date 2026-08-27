@@ -276,17 +276,29 @@ object PixelIcons {
             isFilterBitmap = false
             style = Paint.Style.FILL
         }
+        // Cell boundaries are snapped to whole device pixels (Math.round on each
+        // edge, not a flat "+0.5f" fudge on a fractional cell size) so every cell
+        // gets a consistent 1 or 2px width with no overlap/gap between neighbors.
+        // At small render sizes (finalSize not an exact multiple of 16, e.g. the
+        // 4-day grid's 13dp icons) the previous fractional-px + flat-overlap
+        // approach produced inconsistent per-cell coverage — most visible on the
+        // "rain"/"snow" icons' fine alternating-dot precipitation band, which
+        // real-device screenshots showed rendering as a blurry checkered patch
+        // rather than clean dots. Snapping each edge independently keeps every
+        // icon crisp regardless of how finalSize divides by 16.
         val px = finalSize / 16f
         for (y in grid.indices) {
             val row = grid[y]
+            val top = Math.round(y * px)
+            val bottom = Math.round((y + 1) * px)
             for (x in row.indices) {
                 val ch = row[x]
                 if (ch == '.') continue
                 val color = COLORS[ch] ?: Color.parseColor("#33ff66")
                 paint.color = color
-                val left = x * px
-                val top = y * px
-                canvas.drawRect(left, top, left + px + 0.5f, top + px + 0.5f, paint)
+                val left = Math.round(x * px)
+                val right = Math.round((x + 1) * px)
+                canvas.drawRect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat(), paint)
             }
         }
         return bmp

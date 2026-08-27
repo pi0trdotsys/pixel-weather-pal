@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Terminal 2.0 default (true 4x2 = 250x110dp) layout. Row heights below
+<!-- Terminal 2.0 default (true 4x2 = 250x130dp) layout. Row heights below
      START from src/lib/widget-tokens.ts's ROWS/GRID_ROWS (header 12 / gapA 2 /
      hero 28 / gapB 2 [1dp rule nested inside it] / grid 40 [label 9 + icon 13
-     + temp 10 + pop 8] / gapC 2 / footer 11 = 97dp) but hero/gapA/gapC were
-     adjusted (28->32 / 2->1 / 2->1, net +3dp, still 99dp <= 100dp usable) after
-     real-device verification: CSS line-height:1 (the web mockup's assumption)
-     has no true Android equivalent — even with includeFontPadding="false", a
-     TextView's line height is still its font's actual ascent+descent, which
-     runs measurably taller than the nominal sp size, so the literal 28dp hero
-     token clipped the condition line beneath the 22sp hero temp. See
-     docs/widget-spec.md §7 for the full writeup of this deviation.
+     + temp 10 + pop 8] / gapC 2 / footer 11 = 97dp), same as the previous
+     (99dp/100dp-usable) pass, but were grown FURTHER (header 14 / gapA 2 /
+     hero 44 / gapB 2 / grid 44 [label 10 + icon 13 + temp 12 + pop 9] /
+     gapC 2 / footer 12 = 120dp, against 120dp usable after padding — see
+     minHeight below) after a real-user bug report: the 99dp/100dp budget
+     (barely 1dp of slack) only held at the OS accessibility "larger text"
+     font_scale=1.0 the previous pass was verified at. A real device with
+     font_scale=1.1 (a common, supported accessibility setting — HyperOS and
+     other OEM skins allow even more) grows every sp-sized TextView's real
+     line height (ascent+descent, still bigger than the nominal sp size even
+     with includeFontPadding="false" — CSS line-height:1, the web mockup's
+     assumption, has no true Android equivalent) enough to blow straight
+     through that 1dp margin, visibly overlapping widget_now_line into the
+     hairline rule/grid below it. 120dp of content budget is designed to hold
+     up to font_scale ~1.3 (a well-documented stock-Android ceiling) with real
+     margin, not just re-pass the one scale it was tested at last time.
+     widget_now_line and the 4-day grid's label/temp/pop TextViews additionally
+     carry android:autoSizeTextType="uniform" as defense in depth: even a font
+     scale bigger than was practically tested here shrinks those specific
+     texts gracefully instead of overflowing their now-fixed-height rows.
+     minHeight grew 110dp->130dp to match (weather_widget_info.xml); Android
+     launchers round granted height UP to whole grid cells anyway, and 130dp
+     still reads as "2 cells" on the common 70dp/cell-minus-20dp stock-Launcher3
+     formula (120dp for 2 cells) with a little to spare, so this shouldn't look
+     wildly oversized vs. the mockup's intent. See docs/widget-spec.md §7 for
+     the full writeup of both this deviation and the original one.
      Used whenever the host has NOT granted less than the compact thresholds
      (see WeatherWidgetProvider.COMPACT_*_THRESHOLD_DP) — the smaller/looser
      res/layout/weather_widget_compact.xml is swapped in for that case,
@@ -28,10 +46,10 @@
         android:orientation="vertical"
         android:padding="5dp">
 
-        <!-- row: header — 12dp -->
+        <!-- row: header — 14dp (token: 12dp; +2dp for real font-metric headroom) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="12dp"
+            android:layout_height="14dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -104,16 +122,16 @@
             </FrameLayout>
         </LinearLayout>
 
-        <!-- row: gapA — 1dp (token: 2dp; -1dp lent to hero, see file header) -->
+        <!-- row: gapA — 2dp (token: 2dp) -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="1dp" />
+            android:layout_height="2dp" />
 
-        <!-- row: hero — 32dp (token: 28dp; +4dp for real Android font metrics,
-             see file header comment) -->
+        <!-- row: hero — 44dp (token: 28dp; +16dp for real Android font metrics
+             at font_scale up to ~1.3, see file header comment) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="32dp"
+            android:layout_height="44dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -169,12 +187,22 @@
                             android:textSize="9sp" />
                     </LinearLayout>
 
+                    <!-- Fixed height (rather than wrap_content) is load-bearing, not
+                         decorative: autoSizeTextType only has an effect when the view
+                         has a bounded height to shrink into — with wrap_content it
+                         would just grow with the font instead, which is exactly the
+                         overlap bug this exists to prevent. See file header comment. -->
                     <TextView
                         android:id="@+id/widget_now_line"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="12dp"
+                        android:autoSizeMaxTextSize="8sp"
+                        android:autoSizeMinTextSize="6sp"
+                        android:autoSizeStepGranularity="1sp"
+                        android:autoSizeTextType="uniform"
                         android:ellipsize="end"
                         android:fontFamily="monospace"
+                        android:gravity="center_vertical"
                         android:includeFontPadding="false"
                         android:singleLine="true"
                         android:textColor="@color/widget_cyan_dim"
@@ -262,10 +290,12 @@
                 android:background="@color/widget_hud_line" />
         </FrameLayout>
 
-        <!-- row: 4-day grid — 40dp (label 9 + icon 13 + temp 10 + pop 8) -->
+        <!-- row: 4-day grid — 44dp (label 10 + icon 13 + temp 12 + pop 9; token:
+             40dp/9+13+10+8 — label/temp/pop each +1-2dp for real font-metric
+             headroom at font_scale up to ~1.3) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="44dp"
             android:orientation="horizontal">
 
             <LinearLayout
@@ -278,7 +308,11 @@
                 <TextView
                     android:id="@+id/widget_day0_label"
                     android:layout_width="match_parent"
-                    android:layout_height="9dp"
+                    android:layout_height="10dp"
+                    android:autoSizeMaxTextSize="9sp"
+                    android:autoSizeMinTextSize="7sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -296,7 +330,11 @@
                 <TextView
                     android:id="@+id/widget_temp0"
                     android:layout_width="match_parent"
-                    android:layout_height="10dp"
+                    android:layout_height="12dp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -307,7 +345,11 @@
                 <TextView
                     android:id="@+id/widget_pop0"
                     android:layout_width="match_parent"
-                    android:layout_height="8dp"
+                    android:layout_height="9dp"
+                    android:autoSizeMaxTextSize="8sp"
+                    android:autoSizeMinTextSize="6sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -332,7 +374,11 @@
                 <TextView
                     android:id="@+id/widget_day1_label"
                     android:layout_width="match_parent"
-                    android:layout_height="9dp"
+                    android:layout_height="10dp"
+                    android:autoSizeMaxTextSize="9sp"
+                    android:autoSizeMinTextSize="7sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -350,7 +396,11 @@
                 <TextView
                     android:id="@+id/widget_temp1"
                     android:layout_width="match_parent"
-                    android:layout_height="10dp"
+                    android:layout_height="12dp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -361,7 +411,11 @@
                 <TextView
                     android:id="@+id/widget_pop1"
                     android:layout_width="match_parent"
-                    android:layout_height="8dp"
+                    android:layout_height="9dp"
+                    android:autoSizeMaxTextSize="8sp"
+                    android:autoSizeMinTextSize="6sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -386,7 +440,11 @@
                 <TextView
                     android:id="@+id/widget_day2_label"
                     android:layout_width="match_parent"
-                    android:layout_height="9dp"
+                    android:layout_height="10dp"
+                    android:autoSizeMaxTextSize="9sp"
+                    android:autoSizeMinTextSize="7sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -404,7 +462,11 @@
                 <TextView
                     android:id="@+id/widget_temp2"
                     android:layout_width="match_parent"
-                    android:layout_height="10dp"
+                    android:layout_height="12dp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -415,7 +477,11 @@
                 <TextView
                     android:id="@+id/widget_pop2"
                     android:layout_width="match_parent"
-                    android:layout_height="8dp"
+                    android:layout_height="9dp"
+                    android:autoSizeMaxTextSize="8sp"
+                    android:autoSizeMinTextSize="6sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -440,7 +506,11 @@
                 <TextView
                     android:id="@+id/widget_day3_label"
                     android:layout_width="match_parent"
-                    android:layout_height="9dp"
+                    android:layout_height="10dp"
+                    android:autoSizeMaxTextSize="9sp"
+                    android:autoSizeMinTextSize="7sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -458,7 +528,11 @@
                 <TextView
                     android:id="@+id/widget_temp3"
                     android:layout_width="match_parent"
-                    android:layout_height="10dp"
+                    android:layout_height="12dp"
+                    android:autoSizeMaxTextSize="11sp"
+                    android:autoSizeMinTextSize="8sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -469,7 +543,11 @@
                 <TextView
                     android:id="@+id/widget_pop3"
                     android:layout_width="match_parent"
-                    android:layout_height="8dp"
+                    android:layout_height="9dp"
+                    android:autoSizeMaxTextSize="8sp"
+                    android:autoSizeMinTextSize="6sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:gravity="center"
@@ -480,10 +558,10 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- row: gapC — 1dp (token: 2dp; -1dp lent to hero, see file header) -->
+        <!-- row: gapC — 2dp (token: 2dp) -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="1dp" />
+            android:layout_height="2dp" />
 
         <!-- current-conditions meta row (feels/hum/wind) — no room for it in
              the true-4x2 row budget (it isn't part of WidgetMock4x2.tsx at
@@ -504,11 +582,15 @@
             android:layout_height="0dp"
             android:visibility="gone" />
 
-        <!-- row: footer — 11dp -->
+        <!-- row: footer — 12dp (token: 11dp; +1dp for real font-metric headroom) -->
         <TextView
             android:id="@+id/widget_footer_joke"
             android:layout_width="match_parent"
-            android:layout_height="11dp"
+            android:layout_height="12dp"
+            android:autoSizeMaxTextSize="9sp"
+            android:autoSizeMinTextSize="7sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
             android:ellipsize="end"
             android:fontFamily="monospace"
             android:gravity="center_vertical"
@@ -522,13 +604,13 @@
          over the hero row instead of pushing rows down, so it never breaks
          the row budget above. Positioned just below the header, matching
          WidgetMock4x2.tsx's `top: dp(ROWS.header + 2)` in spirit (measured
-         from the padded content box: padDp + header + gapA = 5+12+1). -->
+         from the padded content box: padDp + header + gapA = 5+14+2). -->
     <TextView
         android:id="@+id/widget_status_banner"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="21dp"
         android:background="@drawable/widget_status_banner_bg"
         android:ellipsize="end"
         android:fontFamily="monospace"

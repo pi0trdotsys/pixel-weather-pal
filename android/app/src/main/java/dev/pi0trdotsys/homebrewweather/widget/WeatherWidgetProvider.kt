@@ -134,13 +134,15 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         private const val COMPACT_NOW_ICON_DP = 16
 
         // Below this granted height (dp), res/layout/weather_widget.xml's
-        // fixed-dp row budget (97dp content, see that file's header comment)
+        // fixed-dp row budget (120dp content, see that file's header comment)
         // no longer fits — buildRemoteViews() swaps in the smaller, looser
         // res/layout/weather_widget_compact.xml instead (RemoteViews can't
         // resize a fixed-dp row at runtime; there's no setViewLayoutHeight
-        // pre-API 31). 110dp (the declared default minHeight, true 4x2)
-        // stays non-compact; 90dp (the declared minResizeHeight) is compact.
-        private const val COMPACT_HEIGHT_THRESHOLD_DP = 110
+        // pre-API 31). 130dp (the declared default minHeight, true 4x2 — grown
+        // from 110dp so the row budget has real slack at font_scale up to
+        // ~1.3, see weather_widget.xml's header comment) stays non-compact;
+        // 90dp (the declared minResizeHeight) is compact.
+        private const val COMPACT_HEIGHT_THRESHOLD_DP = 130
 
         // Below this granted width (dp), the AQI text (in either layout) is
         // dropped and the day-grid temp pair collapses to a single figure
