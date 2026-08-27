@@ -60,34 +60,111 @@ export function withAlpha(hex: string, alpha: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Typography — all px values are for the 2.4× preview canvas (600×264 px).
-// Divide by METRICS.scale (2.4) for the rough native "sp" equivalent.
-// ---------------------------------------------------------------------------
-export const TYPE_SCALE = {
-  header: 13,
-  hero: 44,
-  heroUnit: 18,
-  condition: 12,
-  dayLabel: 16,
-  temp: 18,
-  pop: 13,
-  meta: 12,
-  footer: 13,
-} as const;
-
-// ---------------------------------------------------------------------------
 // Metrics — native 4×2 footprint is 250×110dp; preview renders it at 2.4×.
+// Every size in this file is authored in dp/sp first and converted to preview
+// px with dp(), so the web mockup can never claim more room than RemoteViews has.
 // ---------------------------------------------------------------------------
 export const METRICS = {
   cells: [4, 2] as const,
   dp: { width: 250, height: 110 },
-  preview: { width: 600, height: 264 },
   scale: 2.4,
-  padding: 14,
-  radius: 12,
-  corner: 10,
-  gridCell: 16,
+  padDp: 5,
+  radiusDp: 5,
+  cornerDp: 4,
+  gridCellDp: 7,
 };
+
+/** dp/sp → preview px */
+export const dp = (v: number): number => Math.round(v * METRICS.scale * 100) / 100;
+
+export const PREVIEW = {
+  width: dp(METRICS.dp.width),
+  height: dp(METRICS.dp.height),
+};
+
+// ---------------------------------------------------------------------------
+// Typography — authored in sp (native truth), exposed in px for the mockup.
+// 8sp is the hard floor: anything smaller is unreadable on a home screen.
+// ---------------------------------------------------------------------------
+export const SP_SCALE = {
+  header: 9,
+  hero: 22,
+  heroUnit: 9,
+  condition: 8,
+  dayLabel: 9,
+  temp: 11,
+  pop: 8,
+  meta: 8,
+  footer: 9,
+} as const;
+
+export type TypeToken = keyof typeof SP_SCALE;
+
+export const TYPE_SCALE = Object.fromEntries(
+  Object.entries(SP_SCALE).map(([k, sp]) => [k, dp(sp)]),
+) as Record<TypeToken, number>;
+
+// ---------------------------------------------------------------------------
+// Vertical budget — the whole point: 110dp minus padding must contain every row.
+// Values are dp and are consumed verbatim by the mockup and by weather_widget.xml.
+// ---------------------------------------------------------------------------
+export const ROWS = {
+  header: 12,
+  gapA: 2,
+  hero: 28,
+  rule: 1,
+  gapB: 2,
+  grid: 40,
+  gapC: 2,
+  footer: 11,
+} as const;
+
+/** Inner rows of one forecast column — must sum to ROWS.grid. */
+export const GRID_ROWS = {
+  label: 9,
+  icon: 13,
+  temp: 10,
+  pop: 8,
+} as const;
+
+export const LAYOUT = {
+  heroIconDp: 22,
+  gridIconDp: 13,
+  sparkBarDp: 3,
+  sparkGapDp: 2,
+  sparkHeightDp: 18,
+  refreshHitDp: 12,
+  dotDp: 4,
+  columnGapDp: 3,
+} as const;
+
+export type FitReport = {
+  contentHeightDp: number;
+  usedDp: number;
+  slackDp: number;
+  fits: boolean;
+  gridUsedDp: number;
+  gridFits: boolean;
+  rows: { name: string; dp: number }[];
+};
+
+/** Static assertion helper — surfaced in /mockups so a regression is visible. */
+export function fitReport(): FitReport {
+  const contentHeightDp = METRICS.dp.height - METRICS.padDp * 2;
+  const rows = Object.entries(ROWS).map(([name, v]) => ({ name, dp: v }));
+  const usedDp = rows.reduce((a, r) => a + r.dp, 0);
+  const gridUsedDp = Object.values(GRID_ROWS).reduce((a, v) => a + v, 0);
+  return {
+    contentHeightDp,
+    usedDp,
+    slackDp: contentHeightDp - usedDp,
+    fits: usedDp <= contentHeightDp,
+    gridUsedDp,
+    gridFits: gridUsedDp <= ROWS.grid,
+    rows,
+  };
+}
+
 
 // Per-widget-instance background fill transparency (mirrors WidgetTransparency.kt).
 export const TRANSPARENCY_LEVELS = [
