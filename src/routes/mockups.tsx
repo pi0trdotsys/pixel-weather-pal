@@ -205,10 +205,11 @@ function TypeScaleTable() {
 }
 
 function MetricsTable() {
+  const fit = fitReport();
   return (
     <div className="terminal-box p-4 text-sm">
       <div className="mb-3 text-xs uppercase tracking-widest text-[color:var(--phosphor-dim)]">
-        metrics 4×2
+        metrics 4×2 · fit check
       </div>
       <div className="space-y-1 text-xs">
         <p>
@@ -220,28 +221,49 @@ function MetricsTable() {
           {METRICS.dp.height}
         </p>
         <p>
-          preview <span className="text-[color:var(--phosphor-dim)]">=</span>{" "}
-          {METRICS.preview.width}×{METRICS.preview.height}px
+          preview <span className="text-[color:var(--phosphor-dim)]">=</span> {PREVIEW.width}×
+          {PREVIEW.height}px @{METRICS.scale}×
         </p>
         <p>
-          scale <span className="text-[color:var(--phosphor-dim)]">=</span> {METRICS.scale}×
-        </p>
-        <p>
-          padding <span className="text-[color:var(--phosphor-dim)]">=</span> {METRICS.padding}px
-        </p>
-        <p>
-          radius <span className="text-[color:var(--phosphor-dim)]">=</span> {METRICS.radius}px
-        </p>
-        <p>
-          corner bracket <span className="text-[color:var(--phosphor-dim)]">=</span>{" "}
-          {METRICS.corner}px
+          padding <span className="text-[color:var(--phosphor-dim)]">=</span> {METRICS.padDp}dp ·
+          radius {METRICS.radiusDp}dp · bracket {METRICS.cornerDp}dp
         </p>
       </div>
+
+      <div className="mt-3 space-y-1 text-xs">
+        {fit.rows.map((r) => (
+          <div key={r.name} className="flex justify-between">
+            <code>{r.name}</code>
+            <span className="text-[color:var(--phosphor-dim)]">{r.dp}dp</span>
+          </div>
+        ))}
+        <div className="mt-2 flex justify-between border-t border-[color:var(--phosphor-dim)]/40 pt-2">
+          <code>used / available</code>
+          <span style={{ color: fit.fits ? "var(--hud-cyan)" : "#ff5555" }}>
+            {fit.usedDp}dp / {fit.contentHeightDp}dp ({fit.slackDp >= 0 ? "+" : ""}
+            {fit.slackDp}dp)
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <code>grid column rows</code>
+          <span style={{ color: fit.gridFits ? "var(--hud-cyan)" : "#ff5555" }}>
+            {fit.gridUsedDp}dp / {ROWS.grid}dp
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <code>verdict</code>
+          <span style={{ color: fit.fits && fit.gridFits ? "var(--hud-cyan)" : "#ff5555" }}>
+            {fit.fits && fit.gridFits ? "FITS 4×2" : "OVERFLOW"}
+          </span>
+        </div>
+      </div>
+
       <p className="mt-3 text-[10px] leading-relaxed text-[color:var(--phosphor-dim)]">
         {
-          "// natywnie 4×2 = 250×110dp. Aktualny weather_widget_info.xml ma targetCellHeight=3 → do 4×2 trzeba targetCellHeight=2 / minHeight=110dp."
+          "// budżet pionowy = 110dp − 2×padding. Każdy wiersz ma stałą wysokość dp, teksty są jednoliniowe z ellipsize — nic nie może wypchnąć layoutu. weather_widget_info.xml musi mieć targetCellHeight=2 / minHeight=110dp."
         }
       </p>
     </div>
   );
 }
+
