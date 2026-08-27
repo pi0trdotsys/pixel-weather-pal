@@ -241,3 +241,64 @@ rozmyta "szachownica" na ikonie deszczu/śniegu (drobny wzór kropli). Naprawion
 zaokrąglanie każdej krawędzi komórki niezależnie (`Math.round`), nie płaski offset
 +0.5f na całej siatce.
 
+**REDESIGN "wykorzystaj miejsce" (2026-08-27, ten sam dzień):** po powyższej
+poprawce user zwrócił uwagę, że widget ma teraz mnóstwo *pustej* przestrzeni —
+120dp budżetu (poprzedni akapit) w 130dp deklarowanym `minHeight`, a realny
+launcher (ten sam POCO F8 Ultra) grantował **~185-186dp**, więc ~55-65dp
+renderowało się jako pusta siatka HUD pod stopką. Przeprojektowano, żeby
+faktycznie wykorzystać tę przestrzeń zamiast tylko się w niej mieścić:
+
+- `ICON_DP` (grid) 13→22dp, `NOW_ICON_DP` (hero) 22→30dp — dużo czytelniejsze
+  ikony pikselowe.
+- `widget_meta_line` (feels/hum/wind) **przywrócony** — był całkowicie
+  `GONE`/`0dp` od poprzedniego "true 4×2" przebiegu (nie ma go w
+  `WidgetMock4x2.tsx`), ale skoro jest miejsce, realne dane > pusty margines.
+  `metaLine()` w `WeatherWidgetProvider.kt` odtworzony.
+- Wiersz gridu zmieniony z twardego `44dp` na **elastyczny** (`0dp` +
+  `layout_weight="1"`), z zawartością kolumny wyśrodkowaną
+  (`gravity="center_vertical"`) — dowolny *dodatkowy* grant (więcej niż
+  naturalne minimum layoutu) centruje siatkę zamiast zostawiać martwą
+  przestrzeń u dołu. Zweryfikowane w harnessie przy 250×240dp ("generous",
+  więcej niż deklarowany `minHeight`) — treść ładnie się centruje.
+- `weather_widget_info.xml` → `minHeight` 130→182dp.
+
+**Dwie kolejne realne usterki znalezione i naprawione w tej samej iteracji**
+(obie potwierdzone zrzutami ekranu z prawdziwego, już-umieszczonego widgetu na
+POCO F8 Ultra, nie tylko z harnessu):
+
+1. Lewy klaster hero (ikona/temp/warunki) miał tylko `layout_weight="1"` na
+   dwóch dzieciach o różnym naturalnym rozmiarze (`wrap_content` po prawej ze
+   sparklinią+AQI+sync) — prawy blok "zjadał" większość szerokości, ściskając
+   `widget_now_line` do ok. 70dp, gdzie renderował się **całkowicie pusty**
+   (potwierdzone przybliżeniem zrzutu — nie mniejszy tekst, brak tekstu).
+   Naprawione jawnymi wagami (6:5) na obu blokach hero zamiast "co zostanie".
+   Druga iteracja tej samej naprawy: przy wadze 3:2 prawy blok stał się za
+   wąski (`▽ 100%` łamał się na 2 linie, `AQI`/`sync` ucinane do 3 znaków) —
+   `widget_pop_max`/`widget_sync_line` dostały `singleLine`+`ellipsize`+`maxWidth`
+   (wcześniej ich brakowało — tylko `widget_aqi_line` je miał), a sparkline
+   zmniejszony 20→13sp, żeby zostawić więcej miejsca kolumnie z tekstem.
+2. Nowy, większy budżet (naturalne minimum ~197dp) nie mieścił się w
+   **już-umieszczonej** instancji widgetu, która wciąż miała przyznane stare
+   ~186dp (Android nie remierzy istniejących widgetów tylko dlatego, że
+   aktualizacja aplikacji podniosła deklarowany `minHeight` w manifeście) —
+   potwierdzone przez `adb shell run-as dev.pi0trdotsys.homebrewweather cat
+   shared_prefs/widget_city_prefs.xml` (`min_height_107=186`). Efekt: wiersz
+   PoP (`▽ X%`) w gridzie renderował się jako **całkowicie niewidoczny**.
+   Naprawione przez ścięcie budżetu jeszcze raz (do ~177dp natural minimum:
+   `header 16 · gapA 4 · hero 52 · gapB 3 · grid 58 [label 11 + icon 22 +
+   temp 15 + pop 10] · gapC 4 · meta 13 · footer 13`, padding 7dp), tak żeby
+   mieścił się w tym, co realne launchery *już* przyznawały przy starym,
+   mniejszym `minHeight`, a nie tylko w nowej deklaracji. `minHeight` →
+   182dp, `COMPACT_HEIGHT_THRESHOLD_DP` → 172dp (`DEFAULT_MIN_HEIGHT_DP` w
+   `WidgetPrefs.kt` zsynchronizowany na 182).
+
+Lekcja ogólna: przy zmianie `minHeight`/`minWidth` w `weather_widget_info.xml`
+zawsze sprawdzić realny, już-przyznany rozmiar istniejącej instancji widgetu
+(`adb shell dumpsys appwidget` lub `run-as … cat shared_prefs/widget_city_prefs.xml`)
+zamiast zakładać, że nowa deklaracja natychmiast obowiązuje wszędzie — dla
+nowych umieszczeń tak, dla istniejących nie, dopóki użytkownik nie usunie i
+nie doda widgetu ponownie (lub go nie przeskaluje).
+
+`WidgetPreviewDebugActivity` rozszerzony o 4. kontener (250×240dp, "generous")
+testujący zachowanie przy grantcie większym niż deklarowane minimum.
+

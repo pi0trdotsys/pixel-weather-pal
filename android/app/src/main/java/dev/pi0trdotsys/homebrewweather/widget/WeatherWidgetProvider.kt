@@ -114,35 +114,44 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         private val bgExecutor = Executors.newCachedThreadPool()
         private val DOW = arrayOf("nd", "pn", "wt", "śr", "cz", "pt", "sb")
 
-        // Terminal 2.0 true-4x2 default (250x110dp): LAYOUT.gridIconDp in
-        // src/lib/widget-tokens.ts — the 4-day grid's icon row is a fixed
-        // 13dp (GRID_ROWS.icon) in res/layout/weather_widget.xml. Shared by
-        // the full fetch path and the cheap blink-tick partial update so
-        // both draw icons at the same size.
-        private const val ICON_DP = 13
+        // Real launcher-granted heights turned out to run well past the
+        // declared minHeight (a real device measured ~185dp granted for a
+        // "2 cell" placement, not 130dp) — see weather_widget.xml's header
+        // comment for the full story. The default layout's icons grew to
+        // actually use that space instead of leaving it empty.
+        private const val ICON_DP = 24
 
         // Even smaller day-grid icon for res/layout/weather_widget_compact.xml
         // (used only when compactHeight — see COMPACT_HEIGHT_THRESHOLD_DP
-        // below), matching that layout's 10dp ImageView.
+        // below), matching that layout's 10dp ImageView. Unchanged: the
+        // compact layout stays deliberately small/tight.
         private const val COMPACT_ICON_DP = 10
 
-        // Hero icon, LAYOUT.heroIconDp (22dp) — matches weather_widget.xml's
+        // Hero icon — grown alongside ICON_DP, matches weather_widget.xml's
         // widget_now_icon.
-        private const val NOW_ICON_DP = 22
+        private const val NOW_ICON_DP = 30
 
         // Hero icon size in res/layout/weather_widget_compact.xml (16dp).
         private const val COMPACT_NOW_ICON_DP = 16
 
         // Below this granted height (dp), res/layout/weather_widget.xml's
-        // fixed-dp row budget (120dp content, see that file's header comment)
-        // no longer fits — buildRemoteViews() swaps in the smaller, looser
+        // (now taller, space-filling) row budget no longer comfortably fits
+        // — buildRemoteViews() swaps in the smaller, looser
         // res/layout/weather_widget_compact.xml instead (RemoteViews can't
         // resize a fixed-dp row at runtime; there's no setViewLayoutHeight
-        // pre-API 31). 130dp (the declared default minHeight, true 4x2 — grown
-        // from 110dp so the row budget has real slack at font_scale up to
-        // ~1.3, see weather_widget.xml's header comment) stays non-compact;
-        // 90dp (the declared minResizeHeight) is compact.
-        private const val COMPACT_HEIGHT_THRESHOLD_DP = 130
+        // pre-API 31). weather_widget.xml's natural minimum content height is
+        // ~177dp (see its header comment's row-by-row math, tightened after a
+        // real-device check found an *already-placed* widget instance was
+        // still sitting at its old ~186dp granted height — Android doesn't
+        // retroactively re-measure an existing placement just because a later
+        // app update raises the declared minHeight, so the default layout
+        // has to comfortably fit within what real launchers were already
+        // granting at the *previous*, smaller declared minimum, not just the
+        // new one). 182dp is the new declared default minHeight
+        // (weather_widget_info.xml). 172dp gives a small buffer below the
+        // 177dp natural minimum before falling back to compact; 90dp (the
+        // declared minResizeHeight) is compact.
+        private const val COMPACT_HEIGHT_THRESHOLD_DP = 172
 
         // Below this granted width (dp), the AQI text (in either layout) is
         // dropped and the day-grid temp pair collapses to a single figure
@@ -462,6 +471,25 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             return span
         }
 
+        /** "feels like / humidity / wind" — real data for the reclaimed space in
+         * the default (non-compact) layout's widget_meta_line row. Only surfaces
+         * fields WeatherApi actually parsed; missing/unknown readings (NaN / -1
+         * sentinels, e.g. from an older offline cache) are simply omitted rather
+         * than shown as garbage. */
+        private fun metaLine(weather: WeatherApi.WeatherData): String {
+            val parts = mutableListOf<String>()
+            if (!weather.apparentTemperature.isNaN()) {
+                parts += "feels ${Math.round(weather.apparentTemperature)}°"
+            }
+            if (weather.humidityPercent >= 0) {
+                parts += "hum ${weather.humidityPercent}%"
+            }
+            if (!weather.windSpeedKmh.isNaN()) {
+                parts += "wind ${Math.round(weather.windSpeedKmh)}km/h"
+            }
+            return if (parts.isEmpty()) "" else parts.joinToString("  ·  ")
+        }
+
         private val DAY_LABEL_IDS = intArrayOf(R.id.widget_day0_label, R.id.widget_day1_label, R.id.widget_day2_label, R.id.widget_day3_label)
         private val ICON_IDS = intArrayOf(R.id.widget_icon0, R.id.widget_icon1, R.id.widget_icon2, R.id.widget_icon3)
         private val TEMP_IDS = intArrayOf(R.id.widget_temp0, R.id.widget_temp1, R.id.widget_temp2, R.id.widget_temp3)
@@ -663,11 +691,21 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 rv.setTextViewText(POP_IDS[i], "▽ ${entry.precipitationProbabilityMax}%")
             }
 
-            // widget_meta_line and widget_footer_comment are permanently GONE/0dp
-            // in both layouts now (see weather_widget.xml's header comment — no
-            // room for them in the true-4x2 row budget, and WidgetMock4x2.tsx
-            // doesn't have them either); ids kept only for RemoteViews-action
-            // compatibility, nothing to set here anymore.
+            // widget_footer_comment stays permanently GONE/0dp in both layouts
+            // (WidgetMock4x2.tsx never had it; id kept only for RemoteViews-
+            // action compatibility). widget_meta_line is back, though — real
+            // data (feels-like/humidity/wind) filling real reclaimed space in
+            // the default (non-compact) layout only; the compact layout stays
+            // deliberately minimal and never shows it.
+            if (!compactHeight) {
+                val meta = metaLine(weather)
+                if (meta.isNotEmpty()) {
+                    rv.setTextViewText(R.id.widget_meta_line, meta)
+                    rv.setViewVisibility(R.id.widget_meta_line, View.VISIBLE)
+                } else {
+                    rv.setViewVisibility(R.id.widget_meta_line, View.GONE)
+                }
+            }
 
             // Terminal 2.0 hero: big current temp + condition + rain + AQI.
             // kind0/isNight computed here (rather than further down where the footer

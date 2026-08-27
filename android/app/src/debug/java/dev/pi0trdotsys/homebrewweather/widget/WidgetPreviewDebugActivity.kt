@@ -70,6 +70,19 @@ class WidgetPreviewDebugActivity : Activity() {
             rvOk.setViewVisibility(R.id.widget_status_banner, View.GONE)
             val okContainer = findViewById<FrameLayout>(R.id.preview_ok_container)
             okContainer.addView(rvOk.apply(applicationContext, okContainer))
+
+            // A fourth render at a "generous" size bigger than the declared
+            // minimum (250x240dp vs. the declared 250x200dp) — real launchers
+            // have been observed granting noticeably more than the declared
+            // minimum (see weather_widget.xml's header comment), so this
+            // verifies the flexible grid row actually centers nicely in the
+            // extra room instead of leaving it as dead space.
+            WidgetPrefs.setLastKnownMinWidthDp(this, FAKE_WIDGET_ID, WidgetPrefs.DEFAULT_MIN_WIDTH_DP)
+            WidgetPrefs.setLastKnownMinHeightDp(this, FAKE_WIDGET_ID, 240)
+            val rvGenerous = WeatherWidgetProvider.buildRemoteViews(applicationContext, FAKE_WIDGET_ID)
+            rvGenerous.setViewVisibility(R.id.widget_status_banner, View.GONE)
+            val generousContainer = findViewById<FrameLayout>(R.id.preview_generous_container)
+            generousContainer.addView(rvGenerous.apply(applicationContext, generousContainer))
         } finally {
             // Don't leave the process-wide debug seam flipped on beyond this screen.
             WeatherWidgetProvider.debugForceOfflineCache = false
